@@ -1,0 +1,2947 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14181F">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>GeoUkur GPS</title>
+  <meta name="description" content="Pengukuran lahan berbasis GPS dengan Google Sheets sebagai basis data.">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="manifest" href="manifest.webmanifest">
+<style>
+/* ============================================================
+   GeoUkur GPS — gaya lapangan: kontras tinggi, target sentuh besar,
+   angka pakai monospace supaya terbaca seperti alat ukur.
+   ============================================================ */
+:root{
+  --tinta:#14181F;
+  --tinta-2:#3C4655;
+  --tinta-3:#7A869A;
+  --kertas:#F2F1EC;
+  --putih:#FFFFFF;
+  --garis:#DBD8D0;
+  --oranye:#E8590C;   /* warna patok & pita ukur */
+  --oranye-mud:#FFF1E7;
+  --hijau:#137A3B;
+  --kuning:#B8860B;
+  --merah:#B42318;
+  --biru:#1B6AA8;
+  --radius:14px;
+  --bayang:0 2px 10px rgba(20,24,31,.10);
+  --mono:ui-monospace,"SF Mono","Roboto Mono","DejaVu Sans Mono",Menlo,monospace;
+  --aman-bawah:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overscroll-behavior:none}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--kertas);color:var(--tinta);font-size:15px;line-height:1.45;
+}
+button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS tidak auto-zoom */
+.tersembunyi{display:none!important}
+
+/* ---------- LOGIN ---------- */
+.login{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:linear-gradient(160deg,#14181F 0%,#232C38 60%,#3A2A1C 100%)}
+.login-kotak{width:100%;max-width:380px;background:var(--putih);border-radius:18px;padding:26px 22px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.merek{display:flex;gap:12px;align-items:center;margin-bottom:22px}
+.merek-ikon{width:48px;height:48px;display:grid;place-items:center;font-size:24px;background:var(--oranye-mud);border-radius:12px}
+.merek h1{margin:0;font-size:19px;letter-spacing:-.3px}
+.merek p{margin:1px 0 0;font-size:12.5px;color:var(--tinta-3)}
+.lbl{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--tinta-2);margin:14px 0 6px}
+.inp{width:100%;padding:13px 14px;border:1.5px solid var(--garis);border-radius:10px;background:#FBFBF9;outline:none}
+.inp:focus{border-color:var(--oranye);box-shadow:0 0 0 3px rgba(232,89,12,.14)}
+.pesan-galat{color:var(--merah);font-size:13px;min-height:18px;margin:10px 0 0}
+.jejak{text-align:center;font-size:11px;color:var(--tinta-3);margin:14px 0 0}
+
+/* ---------- TOMBOL ---------- */
+.btn{border:1.5px solid var(--garis);background:var(--putih);color:var(--tinta);
+  padding:12px 16px;border-radius:10px;font-weight:600;cursor:pointer;min-height:46px}
+.btn:active{transform:translateY(1px)}
+.btn-utama{background:var(--oranye);border-color:var(--oranye);color:#fff}
+.btn-bahaya{background:#fff;border-color:var(--merah);color:var(--merah)}
+.btn-sukses{background:var(--hijau);border-color:var(--hijau);color:#fff}
+.btn-lebar{width:100%;margin-top:20px}
+.btn-kecil{padding:7px 12px;min-height:36px;font-size:13px;border-radius:8px}
+.ikon-btn{border:none;background:transparent;font-size:20px;padding:8px;cursor:pointer;color:var(--tinta);
+  min-width:44px;min-height:44px;border-radius:10px}
+.ikon-btn.bulat{background:var(--putih);border:1px solid var(--garis);box-shadow:var(--bayang);border-radius:50%;width:48px;height:48px;padding:0}
+.ikon-btn.kotak{background:var(--putih);border:1.5px solid var(--garis);box-shadow:var(--bayang);width:54px;height:54px}
+.ikon-btn.nyala{background:var(--oranye);border-color:var(--oranye);color:#fff}
+
+/* ---------- KERANGKA APLIKASI ---------- */
+.app{display:flex;flex-direction:column;height:100%}
+.kepala{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--tinta);color:#fff;
+  padding-top:calc(10px + env(safe-area-inset-top,0px))}
+.kepala .ikon-btn{color:#fff;font-size:26px}
+.kepala-judul{flex:1;min-width:0}
+.kepala-judul strong{display:block;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kepala-judul small{display:block;font-size:11.5px;color:#9AA5B4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kepala-kanan{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.ikon-btn.keluar{font-size:19px;color:#9AA5B4;min-width:40px;min-height:40px;padding:0}
+.ikon-btn.keluar:active{color:#FF7A5C}
+.lencana-jaringan{display:flex;align-items:center;gap:5px;font-size:11px;color:#9AA5B4;padding:5px 9px;
+  background:rgba(255,255,255,.08);border-radius:20px}
+.lencana-jaringan .titik{width:7px;height:7px;border-radius:50%;background:#34C759}
+.lencana-jaringan.mati .titik{background:#FF9F0A}
+
+.bilah-antrean{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:8px 12px;background:#FFF4E0;border-bottom:1px solid #F0DCB0;font-size:13px;color:#7A5B00}
+
+.isi{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative}
+.halaman{padding:14px 14px calc(90px + var(--aman-bawah))}
+#halPeta{padding:0;position:absolute;inset:0}
+
+/* ---------- NAVIGASI BAWAH ---------- */
+.nav{display:flex;background:var(--putih);border-top:1px solid var(--garis);
+  padding-bottom:var(--aman-bawah);z-index:900}
+.nav-btn{flex:1;border:none;background:transparent;padding:8px 4px 10px;font-size:10.5px;font-weight:600;
+  color:var(--tinta-3);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:56px}
+.nav-btn span{font-size:20px;line-height:1}
+.nav-btn.aktif{color:var(--oranye)}
+
+/* ---------- STATISTIK ---------- */
+.statistik{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--putih);border:1px solid var(--garis);border-radius:var(--radius);padding:12px 14px}
+.stat b{display:block;font-family:var(--mono);font-size:22px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.stat span{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--tinta-3);font-weight:600}
+.stat.sorot{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+.stat.sorot span{color:#9AA5B4}
+
+/* ---------- PENCARIAN ---------- */
+.alat-cari{display:flex;gap:8px;margin-bottom:12px}
+.inp-cari{flex:1}
+.inp-filter{width:130px}
+
+/* ---------- DAFTAR LAHAN ---------- */
+.daftar{display:flex;flex-direction:column;gap:10px}
+.kartu{background:var(--putih);border:1px solid var(--garis);border-radius:var(--radius);padding:13px 14px;
+  cursor:pointer;position:relative;overflow:hidden}
+.kartu:active{background:#FBFAF7}
+.kartu::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tinta-3)}
+.kartu.st-Aktif::before{background:var(--oranye)}
+.kartu.st-Selesai::before{background:var(--hijau)}
+.kartu.st-Dijeda::before{background:var(--kuning)}
+.kartu-atas{display:flex;justify-content:space-between;align-items:start;gap:8px}
+.kartu h3{margin:0;font-size:15.5px;line-height:1.3}
+.kartu .sub{font-size:12.5px;color:var(--tinta-3);margin-top:2px}
+.pil{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:20px;
+  background:#EEE;color:var(--tinta-2);white-space:nowrap}
+.pil.Aktif{background:var(--oranye-mud);color:var(--oranye)}
+.pil.Selesai{background:#E4F3E9;color:var(--hijau)}
+.pil.Dijeda{background:#FBF3DD;color:var(--kuning)}
+.kartu-angka{display:flex;gap:16px;margin-top:10px;padding-top:9px;border-top:1px dashed var(--garis)}
+.kartu-angka div{font-size:11px;color:var(--tinta-3)}
+.kartu-angka b{display:block;font-family:var(--mono);font-size:14px;color:var(--tinta);font-variant-numeric:tabular-nums}
+.kosong{text-align:center;padding:44px 20px;color:var(--tinta-3)}
+.kosong b{display:block;font-size:16px;color:var(--tinta-2);margin-bottom:4px}
+
+.fab-lebar{position:fixed;left:14px;right:14px;bottom:calc(70px + var(--aman-bawah));
+  background:var(--oranye);color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;
+  box-shadow:0 6px 20px rgba(232,89,12,.35);cursor:pointer;z-index:800}
+
+/* ---------- PETA ---------- */
+#peta{position:absolute;inset:0;background:#DDD9D0}
+.leaflet-container{font-family:inherit}
+/* Zoom digeser ke atas supaya tidak tertutup bilah "Rekam Titik", dan diperbesar untuk jari */
+.leaflet-bottom.leaflet-left{bottom:calc(130px + var(--aman-bawah))}
+.leaflet-control-zoom{border:1px solid var(--garis)!important;box-shadow:var(--bayang)!important;border-radius:12px!important;overflow:hidden}
+.leaflet-control-zoom a{width:44px!important;height:44px!important;line-height:42px!important;font-size:21px!important;color:var(--tinta)!important}
+.leaflet-control-attribution{font-size:9px;max-width:58vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Baris pilihan peta dasar */
+.pilih-peta{display:flex;align-items:center;gap:12px;padding:13px 8px;border-bottom:1px solid var(--garis);
+  width:100%;border-left:none;border-right:none;border-top:none;background:transparent;text-align:left;cursor:pointer;min-height:56px}
+.pilih-peta:last-of-type{border-bottom:none}
+.pilih-peta .em{font-size:20px;width:28px;text-align:center}
+.pilih-peta b{display:block;font-size:14.5px}
+.pilih-peta small{color:var(--tinta-3);font-size:11.5px}
+.pilih-peta.aktif{background:var(--oranye-mud);border-radius:10px}
+.pilih-peta.aktif b{color:var(--oranye)}
+.bar-muat{height:6px;background:var(--garis);border-radius:3px;overflow:hidden;margin-top:8px}
+.bar-muat i{display:block;height:100%;background:var(--oranye);width:0;transition:width .2s}
+
+/* Papan ukur — elemen tanda tangan */
+.papan-ukur{position:absolute;top:10px;left:10px;right:10px;z-index:600;background:rgba(255,255,255,.96);
+  border:1px solid var(--garis);border-radius:12px;box-shadow:var(--bayang);overflow:hidden;backdrop-filter:blur(6px)}
+.pita{height:6px;background:repeating-linear-gradient(90deg,var(--oranye) 0 2px,transparent 2px 10px);opacity:.85}
+.papan-baris{display:flex}
+.papan-sel{flex:1;padding:7px 6px 8px;text-align:center;border-left:1px solid var(--garis)}
+.papan-sel:first-child{border-left:none}
+.papan-sel.utama{flex:1.5;background:var(--oranye-mud)}
+.papan-lbl{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--tinta-3);font-weight:700}
+.papan-sel b{font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.papan-sel.utama b{font-size:20px;color:var(--oranye)}
+.papan-sel i{font-style:normal;font-size:10px;color:var(--tinta-3);margin-left:2px}
+
+.peringatan-geo{position:absolute;top:74px;left:10px;right:10px;z-index:600;background:#FFF0EE;
+  border:1px solid #F3C4BF;color:var(--merah);font-size:12px;padding:8px 10px;border-radius:10px}
+
+.kendali-peta{position:absolute;right:10px;top:96px;z-index:600;display:flex;flex-direction:column;gap:8px;
+  max-height:calc(100% - 260px);pointer-events:none}
+.kendali-peta > *{pointer-events:auto}
+
+/* Peringatan tumpang tindih — merah, di bawah peringatan geometri */
+.peringatan-tumpang{position:absolute;left:10px;right:10px;top:74px;z-index:601;background:var(--merah);color:#fff;
+  font-size:12.5px;padding:9px 11px;border-radius:10px;box-shadow:var(--bayang);cursor:pointer;font-weight:600}
+.peringatan-geo:not(.tersembunyi) ~ .peringatan-tumpang{top:118px}
+
+/* Penanda rekan surveyor.
+   Wadah ikon Leaflet diberi ukuran nyata (34x34) dan jangkar di tengahnya, supaya
+   bulatan tepat berada di pusat lingkaran akurasi. Versi lama memakai iconSize [0,0]
+   sehingga bulatannya kena flex-shrink dan tampil lonjong serta melenceng. */
+.rekan{position:relative;width:34px;height:34px}
+.rekan .bulat-rekan{position:absolute;inset:0;width:34px;height:34px;border-radius:50%;
+  border:3px solid #fff;box-sizing:border-box;overflow:hidden;display:grid;place-items:center;
+  color:#fff;font-size:12px;font-weight:800;box-shadow:0 2px 7px rgba(0,0,0,.4);font-family:var(--mono)}
+.rekan .bulat-rekan img{width:100%;height:100%;object-fit:cover;display:block}
+.rekan .nama-rekan{position:absolute;left:40px;top:50%;transform:translateY(-50%);
+  background:rgba(20,24,31,.84);color:#fff;font-size:10.5px;padding:3px 7px;border-radius:7px;white-space:nowrap}
+.rekan.basi{opacity:.45}
+
+/* Kartu rekan di lembar info */
+.profil{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.profil .avatar{width:64px;height:64px;border-radius:50%;overflow:hidden;flex-shrink:0;display:grid;place-items:center;
+  color:#fff;font-weight:800;font-size:22px;font-family:var(--mono);border:2px solid var(--garis)}
+.profil .avatar img{width:100%;height:100%;object-fit:cover}
+.profil b{display:block;font-size:17px}
+.profil span{font-size:12.5px;color:var(--tinta-3)}
+
+/* Label bidang tetangga */
+.label-bidang{background:rgba(255,255,255,.9);border:1px solid var(--garis);border-radius:6px;padding:2px 6px;
+  font-size:10.5px;font-weight:700;color:var(--tinta-2);white-space:nowrap;transform:translate(-50%,-50%)}
+.label-bidang.bentrok{background:var(--merah);color:#fff;border-color:var(--merah)}
+
+.baris-konflik{display:flex;gap:10px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--garis)}
+.baris-konflik .kotak-luas{background:#FFF0EE;border:1px solid #F3C4BF;color:var(--merah);border-radius:9px;
+  padding:6px 8px;text-align:center;flex-shrink:0;min-width:78px}
+.baris-konflik .kotak-luas b{display:block;font-family:var(--mono);font-size:13px}
+.baris-konflik .kotak-luas span{font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+
+.aksi-bawah{position:absolute;left:10px;right:10px;bottom:calc(12px + var(--aman-bawah));z-index:600;
+  display:flex;align-items:center;gap:10px}
+
+/* Status cepat di atas tombol rekam — surveyor tidak perlu buka menu */
+.bilah-status{position:absolute;left:10px;right:10px;bottom:calc(84px + var(--aman-bawah));z-index:600;
+  display:flex;gap:6px}
+.chip-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip{flex:1;min-height:40px;border:1.5px solid var(--garis);background:rgba(255,255,255,.95);color:var(--tinta-2);
+  border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:var(--bayang);padding:0 4px}
+.chip:active{transform:translateY(1px)}
+.chip.aktif{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.chip.aktif[data-st="Aktif"]{background:var(--oranye);border-color:var(--oranye)}
+.chip.aktif[data-st="Selesai"]{background:var(--hijau);border-color:var(--hijau)}
+.chip.aktif[data-st="Dijeda"]{background:var(--kuning);border-color:var(--kuning)}
+.chip[disabled]{opacity:.45}
+
+/* Pratinjau logo di pengaturan */
+.pratinjau-logo{display:flex;align-items:center;gap:12px;padding:10px;border:1px dashed var(--garis);
+  border-radius:10px;background:#FBFBF9;margin-bottom:8px}
+.pratinjau-logo img{height:52px;max-width:150px;object-fit:contain}
+.pratinjau-logo span{font-size:12px;color:var(--tinta-3)}
+.btn-rekam{flex:1;height:64px;border:none;border-radius:16px;background:var(--oranye);color:#fff;cursor:pointer;
+  box-shadow:0 6px 22px rgba(232,89,12,.42);display:flex;flex-direction:column;justify-content:center;gap:2px}
+.btn-rekam:active{transform:scale(.98)}
+.btn-rekam[disabled]{background:var(--tinta-3);box-shadow:none}
+.btn-rekam.merekam{background:var(--merah);box-shadow:0 6px 22px rgba(180,35,24,.42)}
+.rekam-judul{font-size:16px;font-weight:800;letter-spacing:.3px}
+.rekam-sub{font-size:11px;opacity:.9;font-family:var(--mono)}
+
+/* Penanda titik */
+.penanda{width:26px;height:26px;border-radius:50%;background:var(--oranye);border:2.5px solid #fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;
+  font-family:var(--mono)}
+.penanda.buram{background:var(--kuning)}       /* akurasi di luar toleransi */
+.penanda.tunda{background:var(--tinta-3);border-style:dashed} /* belum tersinkron */
+.penanda.pilih{transform:scale(1.25);box-shadow:0 0 0 4px rgba(232,89,12,.3)}
+/* Titik hasil rekam otomatis: bulatan kecil tanpa nomor, agar jalur rapat tetap terbaca */
+.penanda.kecil{width:12px;height:12px;border-width:2px;font-size:0}
+
+/* Papan tanda tangan */
+.pad-ttd{width:100%;height:180px;border:1.5px dashed var(--garis);border-radius:12px;background:#FBFBF9;
+  touch-action:none;display:block}
+.pad-info{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--tinta-3);margin-top:6px}
+.ttd-baris{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--garis)}
+.ttd-baris:last-of-type{border-bottom:none}
+.ttd-baris img{height:44px;max-width:110px;object-fit:contain;background:#FBFBF9;border:1px solid var(--garis);border-radius:8px;padding:2px}
+.ttd-baris .kosong-ttd{height:44px;width:110px;border:1px dashed var(--garis);border-radius:8px;display:grid;
+  place-items:center;font-size:10.5px;color:var(--tinta-3);flex-shrink:0}
+.ttd-baris .isi{flex:1;min-width:0}
+.ttd-baris .isi b{display:block;font-size:14px}
+.ttd-baris .isi span{font-size:11.5px;color:var(--tinta-3)}
+
+/* ---------- LEMBAR BAWAH ---------- */
+.tirai{position:fixed;inset:0;background:rgba(20,24,31,.5);z-index:1000}
+.lembar{position:fixed;left:0;right:0;bottom:0;z-index:1001;background:var(--putih);
+  border-radius:20px 20px 0 0;max-height:88vh;display:flex;flex-direction:column;
+  padding-bottom:var(--aman-bawah);animation:naik .22s ease}
+@keyframes naik{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.lembar{animation:none}}
+.lembar-pegangan{width:38px;height:4px;background:var(--garis);border-radius:4px;margin:9px auto 2px}
+.lembar-kepala{display:flex;align-items:center;justify-content:space-between;padding:6px 14px 8px;border-bottom:1px solid var(--garis)}
+.lembar-kepala strong{font-size:16px}
+.lembar-isi{overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch}
+
+/* Baris daftar titik */
+.baris-titik{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--garis)}
+.baris-titik:last-child{border-bottom:none}
+.kode{width:38px;height:38px;border-radius:9px;background:var(--tinta);color:#fff;display:grid;place-items:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;flex-shrink:0}
+.kode.buram{background:var(--kuning)}
+.baris-titik .koor{flex:1;min-width:0}
+.baris-titik .koor b{display:block;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+.baris-titik .koor span{font-size:11px;color:var(--tinta-3)}
+
+/* Form */
+.grup{margin-bottom:12px}
+.grup .lbl{margin-top:0}
+.dua-kolom{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+textarea.inp{min-height:72px;resize:vertical}
+.aksi-baris{display:flex;gap:8px;margin-top:14px}
+.aksi-baris .btn{flex:1}
+.menu-daftar{display:flex;flex-direction:column;gap:2px}
+.menu-item{display:flex;align-items:center;gap:12px;padding:14px 8px;border:none;background:transparent;
+  text-align:left;font-size:15px;cursor:pointer;border-bottom:1px solid var(--garis);width:100%;min-height:52px}
+.menu-item:last-child{border-bottom:none}
+.menu-item .em{font-size:19px;width:26px;text-align:center}
+.menu-item small{display:block;font-size:11.5px;color:var(--tinta-3)}
+
+/* Log */
+.log{display:flex;gap:10px;padding:11px 0;border-bottom:1px dashed var(--garis)}
+.log-tanda{width:8px;height:8px;border-radius:50%;background:var(--oranye);margin-top:6px;flex-shrink:0}
+.log b{font-size:13.5px}
+.log p{margin:1px 0 0;font-size:12.5px;color:var(--tinta-2)}
+.log time{font-size:11px;color:var(--tinta-3);font-family:var(--mono)}
+
+/* Tabel ringkas (sisi/patok) */
+.tabel{width:100%;border-collapse:collapse;font-size:12.5px}
+.tabel th,.tabel td{padding:7px 6px;border-bottom:1px solid var(--garis);text-align:left}
+.tabel th{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--tinta-3)}
+.tabel td.num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+
+/* Galeri foto */
+.galeri{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.galeri figure{margin:0;position:relative}
+.galeri img{width:100%;height:92px;object-fit:cover;border-radius:9px;border:1px solid var(--garis)}
+.galeri button{position:absolute;top:4px;right:4px;background:rgba(20,24,31,.75);color:#fff;border:none;
+  border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer}
+
+/* ---------- TOAST & TUNGGU ---------- */
+.toast{position:fixed;left:14px;right:14px;bottom:calc(80px + var(--aman-bawah));z-index:2000;
+  background:var(--tinta);color:#fff;padding:12px 15px;border-radius:11px;font-size:13.5px;box-shadow:var(--bayang)}
+.toast.galat{background:var(--merah)}
+.toast.sukses{background:var(--hijau)}
+.tunggu{position:fixed;inset:0;z-index:3000;background:rgba(242,241,236,.8);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:12px;font-size:13px;color:var(--tinta-2);backdrop-filter:blur(2px)}
+.putar{width:34px;height:34px;border:3px solid var(--garis);border-top-color:var(--oranye);border-radius:50%;
+  animation:putar .8s linear infinite}
+@keyframes putar{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.putar{animation-duration:2s}}
+
+:focus-visible{outline:3px solid var(--biru);outline-offset:2px}
+
+/* Di layar lebar, bilah status & bilah aksi tidak boleh menyelinap ke bawah
+   kolom tombol kanan — beri lorong 76px dan batasi lebarnya. */
+@media(min-width:640px){
+  .bilah-status,.aksi-bawah{left:auto;right:76px;width:min(680px,calc(100% - 100px))}
+  .papan-ukur{right:76px}
+  .peringatan-geo,.peringatan-tumpang{right:76px}
+}
+
+/* Layar lebar (tablet) */
+@media(min-width:720px){
+  .statistik{grid-template-columns:repeat(4,1fr)}
+  .halaman{max-width:900px;margin:0 auto}
+  .fab-lebar{left:auto;right:24px;width:200px}
+  .lembar{left:50%;transform:translateX(-50%);max-width:620px;border-radius:20px 20px 0 0}
+}
+</style>
+</head>
+
+<body>
+  <!-- ============ LAYAR MASUK ============ -->
+  <div id="layarLogin" class="login">
+    <div class="login-kotak">
+      <div class="merek">
+        <div class="merek-ikon">🛰️</div>
+        <div>
+          <h1 id="merekNama">GeoUkur GPS</h1>
+          <p id="merekInstansi">Sistem Pengukuran Lahan</p>
+        </div>
+      </div>
+
+      <label class="lbl" for="inUser">Username</label>
+      <input id="inUser" class="inp" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="mis. surveyor1">
+
+      <label class="lbl" for="inSandi">Password</label>
+      <input id="inSandi" class="inp" type="password" autocomplete="current-password" placeholder="••••••••">
+
+      <button id="btnLogin" class="btn btn-utama btn-lebar">Masuk</button>
+      <p id="loginPesan" class="pesan-galat"></p>
+      <p class="jejak">Versi 2.7.0 · Data tersimpan di Google Sheets</p>
+    </div>
+  </div>
+
+  <!-- ============ APLIKASI ============ -->
+  <div id="aplikasi" class="app tersembunyi">
+
+    <header class="kepala">
+      <button id="btnKembali" class="ikon-btn tersembunyi" aria-label="Kembali">‹</button>
+      <div class="kepala-judul">
+        <strong id="judulHalaman">Beranda</strong>
+        <small id="subJudul">—</small>
+      </div>
+      <div class="kepala-kanan">
+        <span id="lencanaJaringan" class="lencana-jaringan" title="Status koneksi">
+          <span class="titik"></span><span id="teksJaringan">Online</span>
+        </span>
+        <button id="btnKeluar" class="ikon-btn keluar" title="Keluar" aria-label="Keluar">⏻</button>
+      </div>
+    </header>
+
+    <div id="bilahAntrean" class="bilah-antrean tersembunyi">
+      <span id="teksAntrean">0 perubahan menunggu sinkron</span>
+      <button id="btnSinkron" class="btn btn-kecil">Sinkronkan</button>
+    </div>
+
+    <main id="isi" class="isi">
+
+      <!-- ---------- BERANDA ---------- -->
+      <section id="halBeranda" class="halaman">
+        <div class="statistik" id="kartuStatistik"></div>
+
+        <div class="alat-cari">
+          <input id="cariLahan" class="inp inp-cari" placeholder="Cari nama, pemilik, sertifikat, desa…">
+          <select id="filterStatus" class="inp inp-filter">
+            <option value="">Semua status</option>
+            <option>Draf</option><option>Aktif</option><option>Dijeda</option><option>Selesai</option>
+          </select>
+        </div>
+
+        <div id="daftarLahan" class="daftar"></div>
+        <button id="btnLahanBaru" class="fab-lebar">+ Lahan Baru</button>
+      </section>
+
+      <!-- ---------- PETA / EDITOR ---------- -->
+      <section id="halPeta" class="halaman tersembunyi">
+        <div id="peta"></div>
+
+        <!-- Papan ukur (elemen tanda tangan aplikasi) -->
+        <div class="papan-ukur">
+          <div class="pita"></div>
+          <div class="papan-baris">
+            <div class="papan-sel utama">
+              <span class="papan-lbl">Luas</span>
+              <b id="bacaLuas">0.0000</b><i>ha</i>
+            </div>
+            <div class="papan-sel">
+              <span class="papan-lbl">Keliling</span>
+              <b id="bacaKeliling">0</b><i>m</i>
+            </div>
+            <div class="papan-sel">
+              <span class="papan-lbl">Titik</span>
+              <b id="bacaTitik">0</b>
+            </div>
+            <div class="papan-sel">
+              <span class="papan-lbl">Akurasi</span>
+              <b id="bacaAkurasi">–</b><i>m</i>
+            </div>
+          </div>
+        </div>
+
+        <div id="peringatanGeo" class="peringatan-geo tersembunyi"></div>
+        <div id="peringatanTumpang" class="peringatan-tumpang tersembunyi"></div>
+
+        <!-- Kontrol peta kanan -->
+        <!-- Hanya lima tombol yang tampil. Sisanya pindah ke menu ⋯ supaya kolom ini
+             tidak memanjang sampai menabrak bilah status dan tombol Rekam. -->
+        <div class="kendali-peta">
+          <button id="btnBasemap" class="ikon-btn bulat" title="Ganti peta dasar">🗺️</button>
+          <button id="btnIkuti" class="ikon-btn bulat" title="Ikuti posisi saya">🎯</button>
+          <button id="btnKunci" class="ikon-btn bulat nyala" title="Kunci titik (cegah tergeser tidak sengaja)">🔒</button>
+          <button id="btnFoto" class="ikon-btn bulat" title="Foto patok">📷</button>
+          <button id="btnAlat" class="ikon-btn bulat" title="Alat lainnya">⋯</button>
+          <!-- Tetap ada di DOM (penangan klik & status menyala tidak berubah),
+               dijalankan lewat menu ⋯ -->
+          <button id="btnKolab" class="ikon-btn bulat tersembunyi">👥</button>
+          <button id="btnModeTap" class="ikon-btn bulat tersembunyi">✛</button>
+        </div>
+
+        <!-- Status cepat: tepat di atas tombol rekam -->
+        <div id="bilahStatus" class="bilah-status">
+          <button class="chip" data-st="Draf">Draf</button>
+          <button class="chip" data-st="Aktif">Aktif</button>
+          <button class="chip" data-st="Dijeda">Jeda</button>
+          <button class="chip" data-st="Selesai">Selesai</button>
+        </div>
+
+        <!-- Aksi utama bawah -->
+        <div class="aksi-bawah">
+          <button id="btnDaftarTitik" class="ikon-btn kotak" title="Daftar titik">☰</button>
+          <button id="btnRekam" class="btn-rekam">
+            <span class="rekam-judul">Rekam Titik</span>
+            <span id="rekamSub" class="rekam-sub">GPS siap</span>
+          </button>
+          <button id="btnAutoRekam" class="ikon-btn kotak" title="Rekam otomatis sambil berjalan">⏱</button>
+        </div>
+      </section>
+
+      <!-- ---------- AKTIVITAS ---------- -->
+      <section id="halAktivitas" class="halaman tersembunyi">
+        <div id="daftarLog" class="daftar"></div>
+      </section>
+
+      <!-- ---------- PENGATURAN ---------- -->
+      <section id="halPengaturan" class="halaman tersembunyi">
+        <div id="isiPengaturan"></div>
+      </section>
+    </main>
+
+    <!-- ---------- NAVIGASI BAWAH ---------- -->
+    <nav class="nav">
+      <button class="nav-btn aktif" data-hal="Beranda"><span>⌂</span>Beranda</button>
+      <button class="nav-btn" data-hal="Peta"><span>◈</span>Peta</button>
+      <button class="nav-btn" data-hal="Aktivitas"><span>≡</span>Aktivitas</button>
+      <button class="nav-btn" data-hal="Pengaturan"><span>⚙</span>Pengaturan</button>
+    </nav>
+  </div>
+
+  <!-- ---------- LEMBAR BAWAH (bottom sheet) ---------- -->
+  <div id="tirai" class="tirai tersembunyi"></div>
+  <div id="lembar" class="lembar tersembunyi">
+    <div class="lembar-pegangan"></div>
+    <div class="lembar-kepala">
+      <strong id="lembarJudul">Judul</strong>
+      <button id="lembarTutup" class="ikon-btn">✕</button>
+    </div>
+    <div id="lembarIsi" class="lembar-isi"></div>
+  </div>
+
+  <div id="toast" class="toast tersembunyi"></div>
+  <div id="tunggu" class="tunggu tersembunyi"><div class="putar"></div><span id="tungguTeks">Memuat…</span></div>
+
+  <input type="file" id="inputFoto" accept="image/*" capture="environment" class="tersembunyi">
+  <input type="file" id="inputImpor" accept=".geojson,.json,.csv,.kml,.txt" class="tersembunyi">
+  <input type="file" id="inputMbtiles" accept=".mbtiles,.sqlite,.db" class="tersembunyi">
+  <input type="file" id="inputLogo" accept="image/*" class="tersembunyi">
+  <input type="file" id="inputAvatar" accept="image/*" class="tersembunyi">
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+    /* ====================================================================
+       ISI BAGIAN INI SEBELUM MENGUNGGAH KE GITHUB
+       GAS_API_URL = URL deployment Web App Apps Script Anda (akhiran /exec).
+       ==================================================================== */
+    window.GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwu-HzGY9JxCyi4ZocaRKulrLf_EA4iXDgG86WU9IcKym8LodRzoHEXXJcnDuNAIXHVZg/exec'; // contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
+
+    window.BOOT = {
+      app_name: 'GeoUkur GPS',
+      instansi: 'Sistem Pengukuran Lahan',
+      warna_utama: '#E8590C',
+      peta_lat: -7.3506,
+      peta_lng: 108.2172,
+      peta_zoom: 13,
+      toleransi_akurasi: 10,
+      label_tiap: 5
+    };
+    window.APP_VERSION = '2.7.0';
+  </script>
+<script>
+/* ============================================================
+   GeoUkur GPS — logika aplikasi (vanilla JS + Leaflet)
+   ============================================================ */
+(function () {
+'use strict';
+
+/* ---------- STATE ---------- */
+var S = {
+  token: localStorage.getItem('gu_token') || '',
+  pengguna: JSON.parse(localStorage.getItem('gu_pengguna') || 'null'),
+  config: window.BOOT || {},
+  lahan: [],
+  aktif: null,          // { lahan, titik[], lampiran[], log[] }
+  peta: null,
+  lapisTitik: null,
+  lapisPoligon: null,
+  penanda: {},
+  posisi: null,
+  lingkaranGps: null,
+  penandaGps: null,
+  ikuti: true,
+  modeTap: false,
+  kunciTitik: localStorage.getItem('gu_kunci') !== '0',  // terkunci secara bawaan
+
+  // Kolaborasi
+  deviceId: localStorage.getItem('gu_device') ||
+            (function () { var d = 'dev_' + Math.random().toString(36).slice(2, 10);
+                           localStorage.setItem('gu_device', d); return d; })(),
+  kolaborasi: localStorage.getItem('gu_kolab') === '1',
+  berbagiLokasi: localStorage.getItem('gu_berbagi') !== '0',
+  lapisRekan: null,
+  lapisTetangga: null,
+  cacheTetangga: {},   // lahan_id -> { versi, poly, info }
+  avatar: JSON.parse(localStorage.getItem('gu_avatar') || '{}'), // username -> {foto, nama, role}
+  konflik: [],
+  timerDenyut: null,
+  autoRekam: false,
+  autoJarak: 10,
+  titikAutoTerakhir: null,
+  watchId: null,
+  antrean: JSON.parse(localStorage.getItem('gu_antrean') || '[]'),
+  online: navigator.onLine,
+  basemapIdx: 0,
+  mbtiles: null,        // { db, nama, mime, minzoom, maxzoom, bounds }
+  mbtilesDicoba: false
+};
+
+var BASEMAP = [
+  { nama: 'Citra Satelit', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maks: 19, kredit: 'Esri' },
+  { nama: 'Peta Jalan', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', maks: 19, kredit: '&copy; OpenStreetMap' },
+  { nama: 'Topografi', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', maks: 17, kredit: '&copy; OpenTopoMap' }
+];
+var JENIS_LAHAN = ['Pertanian', 'Pemukiman', 'Perkebunan', 'Kehutanan', 'Lahan Kosong', 'Industri', 'Fasilitas Umum'];
+var R = 6378137, DEG = Math.PI / 180;
+
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function uid(p) { return (p || 'id') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+/* ============================================================
+   JEMBATAN BACKEND (dual-mode)
+   - Di dalam Apps Script HtmlService  -> google.script.run
+   - Di hosting statis (GitHub Pages)  -> fetch ke doPost GAS.
+     Content-Type sengaja text/plain supaya tidak kena CORS preflight.
+   ============================================================ */
+function panggilGas(req) {
+  return new Promise(function (resolve, reject) {
+    if (window.GAS_API_URL) {
+      fetch(window.GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(req),
+        redirect: 'follow'
+      })
+        .then(function (r) { return r.json(); })
+        .then(resolve)
+        .catch(function (e) { reject(new Error('Gagal menghubungi server: ' + e.message)); });
+      return;
+    }
+    if (window.google && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(function (e) { reject(new Error(e.message || 'Gagal menghubungi server.')); })
+        .api(req);
+      return;
+    }
+    reject(new Error('Backend belum dikonfigurasi. Isi window.GAS_API_URL di bagian atas index.html.'));
+  });
+}
+
+/* ---------- API ---------- */
+function api(action, payload) {
+  return panggilGas({ action: action, payload: payload || {}, token: S.token })
+    .then(function (res) {
+      if (res && res.ok) return res.data;
+      var pesan = (res && res.error) || 'Kesalahan tidak diketahui.';
+      if (/Sesi (habis|tidak valid)/i.test(pesan)) keluar(true);
+      throw new Error(pesan);
+    });
+}
+
+/* ---------- UI DASAR ---------- */
+var jamToast;
+function toast(pesan, jenis) {
+  var t = $('toast');
+  t.textContent = pesan;
+  t.className = 'toast' + (jenis ? ' ' + jenis : '');
+  clearTimeout(jamToast);
+  jamToast = setTimeout(function () { t.classList.add('tersembunyi'); }, 3800);
+}
+function tunggu(tampil, teks) {
+  $('tungguTeks').textContent = teks || 'Memuat...';
+  $('tunggu').classList.toggle('tersembunyi', !tampil);
+}
+function bukaLembar(judul, isiHtml) {
+  $('lembarJudul').textContent = judul;
+  $('lembarIsi').innerHTML = isiHtml;
+  $('lembar').classList.remove('tersembunyi');
+  $('tirai').classList.remove('tersembunyi');
+}
+function tutupLembar() {
+  $('lembar').classList.add('tersembunyi');
+  $('tirai').classList.add('tersembunyi');
+}
+$('lembarTutup').onclick = tutupLembar;
+$('tirai').onclick = tutupLembar;
+
+/* ---------- GEODESI (jalan juga saat offline) ---------- */
+function luasGeodesik(t) {
+  if (t.length < 3) return 0;
+  var total = 0;
+  for (var i = 0; i < t.length; i++) {
+    var a = t[i], b = t[(i + 1) % t.length];
+    total += (b.lng - a.lng) * DEG * (2 + Math.sin(a.lat * DEG) + Math.sin(b.lat * DEG));
+  }
+  return Math.abs(total * R * R / 2);
+}
+function jarak(a, b) {
+  var dLat = (b.lat - a.lat) * DEG, dLng = (b.lng - a.lng) * DEG;
+  var s = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(a.lat * DEG) * Math.cos(b.lat * DEG) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+function keliling(t) {
+  if (t.length < 2) return 0;
+  var total = 0;
+  for (var i = 0; i < t.length; i++) total += jarak(t[i], t[(i + 1) % t.length]);
+  return total;
+}
+function azimuth(a, b) {
+  var y = Math.sin((b.lng - a.lng) * DEG) * Math.cos(b.lat * DEG);
+  var x = Math.cos(a.lat * DEG) * Math.sin(b.lat * DEG) -
+          Math.sin(a.lat * DEG) * Math.cos(b.lat * DEG) * Math.cos((b.lng - a.lng) * DEG);
+  return (Math.atan2(y, x) / DEG + 360) % 360;
+}
+function bersilangan(p1, p2, p3, p4) {
+  function d(a, b, c) { return (b.lng - a.lng) * (c.lat - a.lat) - (b.lat - a.lat) * (c.lng - a.lng); }
+  var d1 = d(p3, p4, p1), d2 = d(p3, p4, p2), d3 = d(p1, p2, p3), d4 = d(p1, p2, p4);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+function periksaGeometri(t) {
+  var masalah = [], n = t.length;
+  if (n < 3) return masalah;
+  for (var i = 0; i < n; i++) {
+    for (var j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue;
+      if (bersilangan(t[i], t[(i + 1) % n], t[j], t[(j + 1) % n])) {
+        masalah.push('Garis batas menyilang (titik ' + (i + 1) + ' dan ' + (j + 1) + ')');
+      }
+    }
+  }
+  return masalah;
+}
+function urutkanMelingkar(t) {
+  var c = { lat: 0, lng: 0 };
+  t.forEach(function (p) { c.lat += p.lat / t.length; c.lng += p.lng / t.length; });
+  return t.slice().sort(function (a, b) {
+    return Math.atan2(a.lat - c.lat, a.lng - c.lng) - Math.atan2(b.lat - c.lat, b.lng - c.lng);
+  });
+}
+function keUTM(lat, lng) {
+  var zona = Math.floor((lng + 180) / 6) + 1;
+  var a = 6378137, f = 1 / 298.257223563, k0 = 0.9996;
+  var e2 = f * (2 - f), ep2 = e2 / (1 - e2);
+  var phi = lat * DEG, lam = lng * DEG, lam0 = ((zona - 1) * 6 - 180 + 3) * DEG;
+  var N = a / Math.sqrt(1 - e2 * Math.pow(Math.sin(phi), 2));
+  var T = Math.pow(Math.tan(phi), 2), C = ep2 * Math.pow(Math.cos(phi), 2), A = Math.cos(phi) * (lam - lam0);
+  var M = a * ((1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * Math.pow(e2, 3) / 256) * phi
+    - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * Math.pow(e2, 3) / 1024) * Math.sin(2 * phi)
+    + (15 * e2 * e2 / 256 + 45 * Math.pow(e2, 3) / 1024) * Math.sin(4 * phi)
+    - (35 * Math.pow(e2, 3) / 3072) * Math.sin(6 * phi));
+  var E = k0 * N * (A + (1 - T + C) * Math.pow(A, 3) / 6 +
+    (5 - 18 * T + T * T + 72 * C - 58 * ep2) * Math.pow(A, 5) / 120) + 500000;
+  var Nn = k0 * (M + N * Math.tan(phi) * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * Math.pow(A, 4) / 24
+    + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * Math.pow(A, 6) / 720));
+  if (lat < 0) Nn += 10000000;
+  return { zona: zona + (lat < 0 ? 'S' : 'N'), easting: E, northing: Nn };
+}
+
+/* ---------- TUMPANG TINDIH (versi klien) ---------- */
+function dalamPoligon(p, poly) {
+  var di = false;
+  for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    var xi = poly[i].lng, yi = poly[i].lat, xj = poly[j].lng, yj = poly[j].lat;
+    if (((yi > p.lat) !== (yj > p.lat)) &&
+        (p.lng < (xj - xi) * (p.lat - yi) / ((yj - yi) || 1e-12) + xi)) di = !di;
+  }
+  return di;
+}
+function kotakBatas(poly) {
+  var lats = poly.map(function (p) { return p.lat; });
+  var lngs = poly.map(function (p) { return p.lng; });
+  return { minLat: Math.min.apply(null, lats), maksLat: Math.max.apply(null, lats),
+           minLng: Math.min.apply(null, lngs), maksLng: Math.max.apply(null, lngs) };
+}
+function kotakBersinggungan(a, b) {
+  return !(a.maksLat < b.minLat || b.maksLat < a.minLat || a.maksLng < b.minLng || b.maksLng < a.minLng);
+}
+function luasIrisan(A, B, kisi) {
+  kisi = kisi || 110;
+  var ka = kotakBatas(A), kb = kotakBatas(B);
+  var minLat = Math.max(ka.minLat, kb.minLat), maksLat = Math.min(ka.maksLat, kb.maksLat);
+  var minLng = Math.max(ka.minLng, kb.minLng), maksLng = Math.min(ka.maksLng, kb.maksLng);
+  if (minLat >= maksLat || minLng >= maksLng) return 0;
+  var dLat = (maksLat - minLat) / kisi, dLng = (maksLng - minLng) / kisi;
+  var luasSel = (dLat * 111320) * (dLng * 111320 * Math.cos((minLat + maksLat) / 2 * DEG));
+  var n = 0;
+  for (var i = 0; i < kisi; i++) {
+    for (var j = 0; j < kisi; j++) {
+      var p = { lat: minLat + (i + 0.5) * dLat, lng: minLng + (j + 0.5) * dLng };
+      if (dalamPoligon(p, A) && dalamPoligon(p, B)) n++;
+    }
+  }
+  return n * luasSel;
+}
+/** Perkiraan cepat untuk peringatan di lapangan. Angka resmi tetap dihitung server. */
+function tumpangTindih(A, B) {
+  var kosong = { tumpang: false, luas_m2: 0 };
+  if (!A || !B || A.length < 3 || B.length < 3) return kosong;
+  if (!kotakBersinggungan(kotakBatas(A), kotakBatas(B))) return kosong;
+  var luas = luasIrisan(A, B, 110);
+  if (luas < 0.5) return kosong;
+  return { tumpang: true, luas_m2: Math.round(luas * 100) / 100 };
+}
+
+/* ---------- ANTREAN OFFLINE ---------- */
+function simpanAntrean() {
+  localStorage.setItem('gu_antrean', JSON.stringify(S.antrean));
+  var n = S.antrean.length;
+  $('bilahAntrean').classList.toggle('tersembunyi', n === 0);
+  $('teksAntrean').textContent = n + ' perubahan menunggu sinkron';
+}
+function antrekan(op) { S.antrean.push(op); simpanAntrean(); }
+
+function sinkronkan() {
+  if (!S.antrean.length) { toast('Semua data sudah tersinkron.'); return Promise.resolve(); }
+  if (!navigator.onLine) { toast('Masih offline. Coba lagi saat ada sinyal.', 'galat'); return Promise.resolve(); }
+  var ops = S.antrean.slice();
+  tunggu(true, 'Menyinkronkan ' + ops.length + ' perubahan...');
+  return api('sinkronAntrean', { ops: ops })
+    .then(function (h) {
+      S.antrean = S.antrean.slice(ops.length);
+      simpanAntrean();
+      toast(h.sukses + ' perubahan tersinkron' + (h.gagal ? ', ' + h.gagal + ' gagal' : ''), h.gagal ? 'galat' : 'sukses');
+      if (S.aktif) return bukaLahan(S.aktif.lahan.lahan_id, true);
+    })
+    .catch(function (e) { toast(e.message, 'galat'); })
+    .then(function () { tunggu(false); });
+}
+$('btnSinkron').onclick = sinkronkan;
+
+function statusJaringan() {
+  S.online = navigator.onLine;
+  $('lencanaJaringan').classList.toggle('mati', !S.online);
+  $('teksJaringan').textContent = S.online ? 'Online' : 'Offline';
+  if (S.online && S.antrean.length) sinkronkan();
+}
+window.addEventListener('online', statusJaringan);
+window.addEventListener('offline', statusJaringan);
+
+/* ---------- LOGIN ---------- */
+$('btnLogin').onclick = masuk;
+$('inSandi').addEventListener('keydown', function (e) { if (e.key === 'Enter') masuk(); });
+
+function masuk() {
+  var u = $('inUser').value.trim(), p = $('inSandi').value;
+  if (!u || !p) { $('loginPesan').textContent = 'Username dan password wajib diisi.'; return; }
+  tunggu(true, 'Memeriksa akun...');
+  $('loginPesan').textContent = '';
+
+  panggilGas({ action: 'login', payload: { username: u, password: p } })
+    .then(function (r) {
+      if (!r || !r.ok) throw new Error((r && r.error) || 'Gagal masuk.');
+      return r.data;
+    })
+    .then(function (d) {
+      S.token = d.token; S.pengguna = d.pengguna; S.config = d.config;
+      localStorage.setItem('gu_token', d.token);
+      localStorage.setItem('gu_pengguna', JSON.stringify(d.pengguna));
+      localStorage.setItem('gu_config', JSON.stringify(d.config));
+      mulaiAplikasi();
+    })
+    .catch(function (e) { $('loginPesan').textContent = e.message; })
+    .then(function () { tunggu(false); });
+}
+
+function keluar(paksa) {
+  if (!paksa && S.antrean.length &&
+      !confirm('Masih ada ' + S.antrean.length + ' perubahan yang belum tersinkron. Tetap keluar?')) return;
+  localStorage.removeItem('gu_token');
+  localStorage.removeItem('gu_pengguna');
+  S.token = ''; S.pengguna = null;
+  if (S.watchId !== null) { navigator.geolocation.clearWatch(S.watchId); S.watchId = null; }
+  hentikanDenyut(true);
+  $('aplikasi').classList.add('tersembunyi');
+  $('layarLogin').classList.remove('tersembunyi');
+}
+
+/* ---------- NAVIGASI ---------- */
+var halamanAktif = 'Beranda';
+Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
+  b.onclick = function () { pindah(b.dataset.hal); };
+});
+$('btnKembali').onclick = function () { pindah('Beranda'); };
+$('btnKeluar').onclick = function () {
+  if (confirm('Keluar dari akun ' + (S.pengguna ? S.pengguna.username : '') + '?')) keluar(false);
+};
+
+function pindah(hal) {
+  if (hal === 'Peta' && !S.aktif) { toast('Pilih atau buat lahan dulu di Beranda.'); return; }
+  halamanAktif = hal;
+  ['Beranda', 'Peta', 'Aktivitas', 'Pengaturan'].forEach(function (h) {
+    $('hal' + h).classList.toggle('tersembunyi', h !== hal);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
+    b.classList.toggle('aktif', b.dataset.hal === hal);
+  });
+  $('btnKembali').classList.toggle('tersembunyi', hal !== 'Peta');
+  $('judulHalaman').textContent = (hal === 'Peta' && S.aktif) ? S.aktif.lahan.nama : hal;
+  $('subJudul').textContent = (hal === 'Peta' && S.aktif)
+    ? (S.aktif.lahan.status + ' - ' + S.aktif.titik.length + ' titik')
+    : (S.pengguna ? S.pengguna.nama_lengkap + ' - ' + S.pengguna.role : '');
+
+  if (hal === 'Peta') {
+    setTimeout(function () { if (S.peta) S.peta.invalidateSize(); }, 60);
+    mulaiGps();
+    if (S.kolaborasi) mulaiDenyut();
+  } else {
+    hentikanDenyut(false); // berhenti mengirim denyut saat tidak di layar peta (hemat baterai)
+  }
+  if (hal === 'Aktivitas') muatLog();
+  if (hal === 'Pengaturan') gambarPengaturan();
+  if (hal === 'Beranda') muatBeranda();
+}
+
+/* ---------- BERANDA ---------- */
+function muatBeranda() {
+  Promise.all([api('statistik', {}), api('daftarLahan', {})])
+    .then(function (r) {
+      gambarStatistik(r[0]);
+      S.lahan = r[1];
+      localStorage.setItem('gu_cache_lahan', JSON.stringify(r[1]));
+      gambarDaftarLahan();
+    })
+    .catch(function (e) {
+      var cache = JSON.parse(localStorage.getItem('gu_cache_lahan') || '[]');
+      if (cache.length) {
+        S.lahan = cache; gambarDaftarLahan();
+        toast('Menampilkan data tersimpan (mode offline).');
+      } else toast(e.message, 'galat');
+    });
+}
+
+function kotakStat(nilai, label, sorot) {
+  return '<div class="stat' + (sorot ? ' sorot' : '') + '"><b>' + esc(nilai) + '</b><span>' + esc(label) + '</span></div>';
+}
+function gambarStatistik(st) {
+  $('kartuStatistik').innerHTML =
+    kotakStat(st.total_ha.toFixed(2), 'Total hektar', true) +
+    kotakStat(st.total, 'Bidang lahan') +
+    kotakStat(st.aktif + st.dijeda, 'Sedang diukur') +
+    kotakStat(st.selesai, 'Selesai');
+}
+
+function gambarDaftarLahan() {
+  var cari = $('cariLahan').value.toLowerCase();
+  var status = $('filterStatus').value;
+  var data = S.lahan.filter(function (l) {
+    var cocok = !cari || [l.nama, l.pemilik, l.no_sertifikat, l.desa, l.kecamatan, l.surveyor]
+      .join(' ').toLowerCase().indexOf(cari) >= 0;
+    return cocok && (!status || l.status === status);
+  });
+
+  var w = $('daftarLahan');
+  if (!data.length) {
+    w.innerHTML = '<div class="kosong"><b>Belum ada lahan</b>Ketuk tombol "+ Lahan Baru" untuk memulai pengukuran.</div>';
+    return;
+  }
+  w.innerHTML = data.map(function (l) {
+    return '<div class="kartu st-' + esc(l.status) + '" data-id="' + esc(l.lahan_id) + '">' +
+      '<div class="kartu-atas"><div><h3>' + esc(l.nama) + '</h3>' +
+      '<div class="sub">' + esc(l.pemilik || 'Tanpa pemilik') + ' - ' +
+      esc([l.desa, l.kecamatan].filter(Boolean).join(', ') || 'lokasi belum diisi') + '</div></div>' +
+      '<span class="pil ' + esc(l.status) + '">' + esc(l.status) + '</span></div>' +
+      '<div class="kartu-angka">' +
+      '<div>Luas<b>' + (l.luas_ha || 0).toFixed(4) + ' ha</b></div>' +
+      '<div>Keliling<b>' + Math.round(l.keliling_m || 0) + ' m</b></div>' +
+      '<div>Titik<b>' + (l.jumlah_titik || 0) + '</b></div>' +
+      '</div></div>';
+  }).join('');
+
+  Array.prototype.forEach.call(w.querySelectorAll('.kartu'), function (k) {
+    k.onclick = function () { bukaLahan(k.dataset.id); };
+  });
+}
+$('cariLahan').oninput = gambarDaftarLahan;
+$('filterStatus').onchange = gambarDaftarLahan;
+
+/* ---------- FORM LAHAN ---------- */
+$('btnLahanBaru').onclick = function () { formLahan(null); };
+
+function formLahan(l) {
+  l = l || {};
+  var opsiJenis = JENIS_LAHAN.map(function (j) {
+    return '<option' + (l.jenis_lahan === j ? ' selected' : '') + '>' + j + '</option>';
+  }).join('');
+
+  bukaLembar(l.lahan_id ? 'Ubah Data Lahan' : 'Lahan Baru',
+    '<div class="grup"><label class="lbl">Nama bidang (wajib)</label>' +
+      '<input id="fNama" class="inp" value="' + esc(l.nama || '') + '" placeholder="mis. Sawah Blok Cikadu"></div>' +
+    '<div class="dua-kolom">' +
+      '<div class="grup"><label class="lbl">Pemilik</label><input id="fPemilik" class="inp" value="' + esc(l.pemilik || '') + '"></div>' +
+      '<div class="grup"><label class="lbl">No. Sertifikat/NIB</label><input id="fSert" class="inp" value="' + esc(l.no_sertifikat || '') + '"></div>' +
+    '</div>' +
+    '<div class="grup"><label class="lbl">Penggunaan lahan</label><select id="fJenis" class="inp">' + opsiJenis + '</select></div>' +
+    '<div class="dua-kolom">' +
+      '<div class="grup"><label class="lbl">Desa</label><input id="fDesa" class="inp" value="' + esc(l.desa || '') + '"></div>' +
+      '<div class="grup"><label class="lbl">Kecamatan</label><input id="fKec" class="inp" value="' + esc(l.kecamatan || '') + '"></div>' +
+    '</div>' +
+    '<div class="dua-kolom">' +
+      '<div class="grup"><label class="lbl">Kabupaten</label><input id="fKab" class="inp" value="' + esc(l.kabupaten || '') + '"></div>' +
+      '<div class="grup"><label class="lbl">Provinsi</label><input id="fProv" class="inp" value="' + esc(l.provinsi || '') + '"></div>' +
+    '</div>' +
+    '<div class="grup"><label class="lbl">Surveyor</label><input id="fSurv" class="inp" value="' +
+      esc(l.surveyor || (S.pengguna ? S.pengguna.nama_lengkap : '')) + '"></div>' +
+    '<div class="grup"><label class="lbl">Catatan</label><textarea id="fCatatan" class="inp">' + esc(l.catatan || '') + '</textarea></div>' +
+    '<div class="aksi-baris"><button class="btn" id="fBatal">Batal</button>' +
+      '<button class="btn btn-utama" id="fSimpan">Simpan</button></div>');
+
+  $('fBatal').onclick = tutupLembar;
+  $('fSimpan').onclick = function () {
+    var p = {
+      lahan_id: l.lahan_id, nama: $('fNama').value.trim(), pemilik: $('fPemilik').value.trim(),
+      no_sertifikat: $('fSert').value.trim(), jenis_lahan: $('fJenis').value,
+      desa: $('fDesa').value.trim(), kecamatan: $('fKec').value.trim(),
+      kabupaten: $('fKab').value.trim(), provinsi: $('fProv').value.trim(),
+      surveyor: $('fSurv').value.trim(), catatan: $('fCatatan').value.trim()
+    };
+    if (!p.nama) { toast('Nama bidang wajib diisi.', 'galat'); return; }
+    tunggu(true, 'Menyimpan...');
+    api('simpanLahan', p)
+      .then(function (d) {
+        tutupLembar();
+        toast('Lahan tersimpan.', 'sukses');
+        return bukaLahan(d.lahan_id);
+      })
+      .catch(function (e) { toast(e.message, 'galat'); })
+      .then(function () { tunggu(false); });
+  };
+}
+
+/* ---------- BUKA LAHAN & PETA ---------- */
+function bukaLahan(id, tetapDiHalaman) {
+  tunggu(true, 'Membuka lahan...');
+  return api('detailLahan', { lahan_id: id })
+    .then(function (d) {
+      S.aktif = d;
+      localStorage.setItem('gu_cache_' + id, JSON.stringify(d));
+      siapkanPeta();
+      gambarPeta(true);
+      pindah(tetapDiHalaman ? halamanAktif : 'Peta');
+    })
+    .catch(function (e) {
+      var cache = JSON.parse(localStorage.getItem('gu_cache_' + id) || 'null');
+      if (cache) {
+        S.aktif = cache; siapkanPeta(); gambarPeta(true); pindah('Peta');
+        toast('Mode offline: menampilkan data tersimpan.');
+      } else toast(e.message, 'galat');
+    })
+    .then(function () { tunggu(false); });
+}
+
+var lapisBasemap;
+function siapkanPeta() {
+  if (S.peta) return;
+  S.peta = L.map('peta', { zoomControl: false }).setView(
+    [S.config.peta_lat || -7.35, S.config.peta_lng || 108.22], S.config.peta_zoom || 13);
+  gantiBasemap(parseInt(localStorage.getItem('gu_basemap') || '0', 10) || 0);
+  L.control.zoom({ position: 'bottomleft' }).addTo(S.peta);
+
+  // Pulihkan peta offline yang pernah dimuat; pakai otomatis kalau sedang tanpa sinyal
+  pulihkanMbtiles().then(function (mt) {
+    if (!mt) return;
+    if (!navigator.onLine || localStorage.getItem('gu_basemap') === 'offline') {
+      gantiBasemap('offline');
+      toast('Peta offline aktif: ' + mt.nama);
+    }
+  });
+  S.lapisTitik = L.layerGroup().addTo(S.peta);
+
+  S.peta.on('click', function (e) {
+    if (!S.modeTap || !bolehEdit()) return;
+    tambahTitik({ lat: e.latlng.lat, lng: e.latlng.lng, sumber: 'manual' });
+  });
+  S.peta.on('dragstart', function () {
+    S.ikuti = false;
+    $('btnIkuti').classList.remove('nyala');
+  });
+}
+
+function gantiBasemap(idx) {
+  if (idx === 'offline') {
+    if (!S.mbtiles) { toast('Peta offline belum dimuat.', 'galat'); return; }
+    if (lapisBasemap) S.peta.removeLayer(lapisBasemap);
+    lapisBasemap = new LapisMbtiles(S.mbtiles.db, {
+      mime: S.mbtiles.mime,
+      minZoom: S.mbtiles.minzoom,
+      maxZoom: 22,
+      maxNativeZoom: S.mbtiles.maxzoom,
+      attribution: 'MBTiles offline: ' + esc(S.mbtiles.nama)
+    }).addTo(S.peta);
+    S.basemapIdx = 'offline';
+    localStorage.setItem('gu_basemap', 'offline');
+    if (S.lapisPoligon) S.lapisPoligon.bringToFront();
+    return;
+  }
+  S.basemapIdx = idx % BASEMAP.length;
+  var b = BASEMAP[S.basemapIdx];
+  if (lapisBasemap) S.peta.removeLayer(lapisBasemap);
+  lapisBasemap = L.tileLayer(b.url, { maxZoom: b.maks, attribution: b.kredit }).addTo(S.peta);
+  localStorage.setItem('gu_basemap', String(S.basemapIdx));
+  if (S.lapisPoligon) S.lapisPoligon.bringToFront();
+}
+
+/* ============================================================
+   PETA DASAR OFFLINE — MBTiles dibaca langsung di HP via sql.js
+   Berkas .mbtiles disimpan di IndexedDB, jadi tetap ada setelah
+   aplikasi ditutup dan sepenuhnya jalan tanpa sinyal.
+   ============================================================ */
+var PIKSEL_KOSONG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+var SQLJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/';
+
+var LapisMbtiles = L.TileLayer.extend({
+  initialize: function (db, opsi) {
+    this._db = db;
+    L.TileLayer.prototype.initialize.call(this, '', opsi);
+  },
+  createTile: function (koor, selesai) {
+    var img = document.createElement('img');
+    img.setAttribute('role', 'presentation');
+    try {
+      // MBTiles memakai skema TMS: sumbu Y terbalik dari XYZ milik Leaflet.
+      var y = Math.pow(2, koor.z) - 1 - koor.y;
+      var st = this._db.prepare('SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?');
+      st.bind([koor.z, koor.x, y]);
+      img.src = st.step()
+        ? 'data:' + this.options.mime + ';base64,' + bytesKeBase64(st.getAsObject().tile_data)
+        : PIKSEL_KOSONG;
+      st.free();
+    } catch (e) {
+      img.src = PIKSEL_KOSONG;
+    }
+    img.onload = function () { selesai(null, img); };
+    img.onerror = function () { selesai(null, img); };
+    return img;
+  }
+});
+
+function bytesKeBase64(bytes) {
+  var biner = '', potong = 8192;
+  for (var i = 0; i < bytes.length; i += potong) {
+    biner += String.fromCharCode.apply(null, bytes.subarray(i, i + potong));
+  }
+  return btoa(biner);
+}
+
+/* --- IndexedDB: simpan berkas .mbtiles mentah --- */
+function idb() {
+  return new Promise(function (res, rej) {
+    var r = indexedDB.open('geoukur', 1);
+    r.onupgradeneeded = function () { r.result.createObjectStore('peta'); };
+    r.onsuccess = function () { res(r.result); };
+    r.onerror = function () { rej(new Error('IndexedDB tidak tersedia di browser ini.')); };
+  });
+}
+function idbTulis(kunci, nilai) {
+  return idb().then(function (db) {
+    return new Promise(function (res, rej) {
+      var tx = db.transaction('peta', 'readwrite');
+      tx.objectStore('peta').put(nilai, kunci);
+      tx.oncomplete = function () { res(true); };
+      tx.onerror = function () { rej(new Error('Gagal menyimpan ke penyimpanan lokal (mungkin memori penuh).')); };
+    });
+  });
+}
+function idbBaca(kunci) {
+  return idb().then(function (db) {
+    return new Promise(function (res, rej) {
+      var q = db.transaction('peta', 'readonly').objectStore('peta').get(kunci);
+      q.onsuccess = function () { res(q.result || null); };
+      q.onerror = function () { rej(new Error('Gagal membaca penyimpanan lokal.')); };
+    });
+  });
+}
+function idbHapus(kunci) {
+  return idb().then(function (db) {
+    return new Promise(function (res) {
+      var tx = db.transaction('peta', 'readwrite');
+      tx.objectStore('peta').delete(kunci);
+      tx.oncomplete = function () { res(true); };
+    });
+  });
+}
+
+/* --- sql.js dimuat sekali, lalu di-cache oleh browser --- */
+var sqlSiap = null;
+function muatSqlJs() {
+  if (sqlSiap) return sqlSiap;
+  sqlSiap = new Promise(function (res, rej) {
+    if (window.initSqlJs) return res(window.initSqlJs);
+    var s = document.createElement('script');
+    s.src = SQLJS_CDN + 'sql-wasm.js';
+    s.onload = function () { res(window.initSqlJs); };
+    s.onerror = function () {
+      sqlSiap = null;
+      rej(new Error('Mesin peta offline gagal dimuat. Sambungkan internet sekali untuk mengunduhnya.'));
+    };
+    document.head.appendChild(s);
+  }).then(function (init) {
+    return init({ locateFile: function (f) { return SQLJS_CDN + f; } });
+  });
+  return sqlSiap;
+}
+
+/** Buka ArrayBuffer .mbtiles → siapkan S.mbtiles */
+function siapkanMbtiles(buffer, nama) {
+  return muatSqlJs().then(function (SQL) {
+    var db = new SQL.Database(new Uint8Array(buffer));
+
+    // Validasi: harus ada tabel tiles
+    var cek = db.exec("SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name='tiles'");
+    if (!cek.length) throw new Error('Berkas ini bukan MBTiles yang sah (tabel "tiles" tidak ditemukan).');
+
+    var meta = {};
+    try {
+      var m = db.exec('SELECT name, value FROM metadata');
+      if (m.length) m[0].values.forEach(function (r) { meta[String(r[0]).toLowerCase()] = r[1]; });
+    } catch (e) {}
+
+    var z = db.exec('SELECT MIN(zoom_level), MAX(zoom_level) FROM tiles');
+    var zMin = meta.minzoom !== undefined ? parseInt(meta.minzoom, 10) : (z.length ? z[0].values[0][0] : 0);
+    var zMaks = meta.maxzoom !== undefined ? parseInt(meta.maxzoom, 10) : (z.length ? z[0].values[0][1] : 18);
+    var jml = db.exec('SELECT COUNT(*) FROM tiles');
+    var format = String(meta.format || 'png').toLowerCase();
+
+    S.mbtiles = {
+      db: db,
+      nama: meta.name || nama,
+      mime: format.indexOf('jpg') === 0 || format === 'jpeg' ? 'image/jpeg' : (format === 'webp' ? 'image/webp' : 'image/png'),
+      minzoom: zMin,
+      maxzoom: zMaks,
+      jumlah_ubin: jml.length ? jml[0].values[0][0] : 0,
+      bounds: meta.bounds ? String(meta.bounds).split(',').map(parseFloat) : null
+    };
+    return S.mbtiles;
+  });
+}
+
+/** Muat ulang dari IndexedDB saat aplikasi dibuka (dipanggil sekali). */
+function pulihkanMbtiles() {
+  if (S.mbtiles || S.mbtilesDicoba) return Promise.resolve(null);
+  S.mbtilesDicoba = true;
+  return idbBaca('mbtiles')
+    .then(function (rek) {
+      if (!rek || !rek.data) return null;
+      return siapkanMbtiles(rek.data, rek.nama);
+    })
+    .catch(function () { return null; });
+}
+
+$('inputMbtiles').onchange = function (e) {
+  var berkas = e.target.files[0];
+  if (!berkas) return;
+  var mb = berkas.size / 1048576;
+  if (mb > 300) { toast('Berkas ' + mb.toFixed(0) + ' MB terlalu besar. Potong dulu areanya (maks ~300 MB).', 'galat'); return; }
+
+  tunggu(true, 'Membaca ' + mb.toFixed(1) + ' MB peta offline...');
+  var pembaca = new FileReader();
+  pembaca.onload = function () {
+    var buffer = pembaca.result;
+    siapkanMbtiles(buffer, berkas.name)
+      .then(function (mt) {
+        tunggu(true, 'Menyimpan peta offline di perangkat...');
+        return idbTulis('mbtiles', { nama: mt.nama, data: buffer, ukuran: berkas.size, dibuat: Date.now() });
+      })
+      .then(function () {
+        gantiBasemap('offline');
+        if (S.mbtiles.bounds && S.mbtiles.bounds.length === 4) {
+          var b = S.mbtiles.bounds; // barat, selatan, timur, utara
+          S.ikuti = false;
+          $('btnIkuti').classList.remove('nyala');
+          S.peta.fitBounds([[b[1], b[0]], [b[3], b[2]]]);
+        }
+        tutupLembar();
+        toast('Peta offline aktif: ' + S.mbtiles.jumlah_ubin + ' ubin, zoom ' +
+              S.mbtiles.minzoom + '-' + S.mbtiles.maxzoom + '.', 'sukses');
+      })
+      .catch(function (err) { toast(err.message, 'galat'); })
+      .then(function () { tunggu(false); $('inputMbtiles').value = ''; });
+  };
+  pembaca.onerror = function () { tunggu(false); toast('Gagal membaca berkas.', 'galat'); };
+  pembaca.readAsArrayBuffer(berkas);
+};
+
+/* --- Pemilih peta dasar --- */
+$('btnBasemap').onclick = function () {
+  pulihkanMbtiles().then(gambarPilihPeta);
+};
+
+function gambarPilihPeta() {
+  var isi = BASEMAP.map(function (b, i) {
+    return '<button class="pilih-peta' + (S.basemapIdx === i ? ' aktif' : '') + '" data-i="' + i + '">' +
+      '<span class="em">' + (i === 0 ? '&#128506;' : i === 1 ? '&#128739;' : '&#9968;') + '</span>' +
+      '<span><b>' + esc(b.nama) + '</b><small>Butuh internet</small></span></button>';
+  }).join('');
+
+  if (S.mbtiles) {
+    isi += '<button class="pilih-peta' + (S.basemapIdx === 'offline' ? ' aktif' : '') + '" data-i="offline">' +
+      '<span class="em">&#128190;</span><span><b>' + esc(S.mbtiles.nama) + '</b><small>Offline - ' +
+      S.mbtiles.jumlah_ubin + ' ubin, zoom ' + S.mbtiles.minzoom + '-' + S.mbtiles.maxzoom + '</small></span></button>';
+  }
+
+  isi += '<div style="margin-top:14px;border-top:1px solid var(--garis);padding-top:12px">' +
+    '<button class="btn btn-utama btn-lebar" id="mbMuat" style="margin-top:0">' +
+    (S.mbtiles ? 'Ganti berkas MBTiles' : 'Muat peta offline (.mbtiles)') + '</button>' +
+    (S.mbtiles ? '<button class="btn btn-bahaya btn-lebar" id="mbHapus" style="margin-top:8px">Hapus peta offline</button>' : '') +
+    '<p class="jejak" style="text-align:left;line-height:1.5">Siapkan .mbtiles dari QGIS (Processing &rarr; Generate XYZ tiles &rarr; MBTiles) ' +
+    'atau Mobile Atlas Creator. Zoom 14-17 untuk satu kecamatan biasanya 20-80 MB. ' +
+    'Berkas tersimpan di perangkat, jadi peta tetap tampil tanpa sinyal.</p></div>';
+
+  bukaLembar('Peta Dasar', isi);
+
+  Array.prototype.forEach.call($('lembarIsi').querySelectorAll('.pilih-peta'), function (b) {
+    b.onclick = function () {
+      var v = b.dataset.i;
+      gantiBasemap(v === 'offline' ? 'offline' : parseInt(v, 10));
+      tutupLembar();
+      toast('Peta dasar: ' + (v === 'offline' ? S.mbtiles.nama + ' (offline)' : BASEMAP[parseInt(v, 10)].nama));
+    };
+  });
+
+  $('mbMuat').onclick = function () { $('inputMbtiles').click(); };
+  if ($('mbHapus')) $('mbHapus').onclick = function () {
+    if (!confirm('Hapus peta offline dari perangkat ini? Berkas .mbtiles asli Anda tidak terpengaruh.')) return;
+    idbHapus('mbtiles').then(function () {
+      try { S.mbtiles.db.close(); } catch (e) {}
+      S.mbtiles = null;
+      gantiBasemap(0);
+      tutupLembar();
+      toast('Peta offline dihapus.');
+    });
+  };
+}
+
+function bisaTulis() { return S.pengguna && S.pengguna.role !== 'viewer'; }
+function bolehEdit() {
+  if (!bisaTulis()) { toast('Peran "viewer" hanya bisa melihat dan mencetak.', 'galat'); return false; }
+  if (S.aktif && S.aktif.lahan.status === 'Selesai' && S.pengguna.role !== 'admin') {
+    toast('Lahan sudah Selesai. Ubah status dulu untuk mengedit.', 'galat');
+    return false;
+  }
+  return true;
+}
+
+/* ---------- GAMBAR PETA ---------- */
+function gambarPeta(paskan) {
+  if (!S.aktif || !S.peta) return;
+  var T = S.aktif.titik;
+
+  S.lapisTitik.clearLayers();
+  S.penanda = {};
+  if (S.lapisPoligon) { S.peta.removeLayer(S.lapisPoligon); S.lapisPoligon = null; }
+
+  if (T.length >= 2) {
+    var koor = T.map(function (t) { return [t.lat, t.lng]; });
+    S.lapisPoligon = (T.length >= 3)
+      ? L.polygon(koor, { color: '#E8590C', weight: 3, fillOpacity: 0.18 })
+      : L.polyline(koor, { color: '#E8590C', weight: 3, dashArray: '6,6' });
+    S.lapisPoligon.addTo(S.peta);
+  }
+
+  var tol = S.config.toleransi_akurasi || 10;
+  var tiap = S.config.label_tiap || 5;
+  var padat = T.length > 25; // jalur rekam otomatis: jangan penuhi peta dengan nomor
+
+  T.forEach(function (t, i) {
+    var buram = t.akurasi && t.akurasi > tol;
+    var tunda = S.antrean.some(function (o) { return o.titik && o.titik.titik_id === t.titik_id; });
+    var otomatis = t.sumber === 'auto';
+    var berlabel = !otomatis || (i % tiap === 0);
+    var kecil = otomatis && !berlabel;
+    var ikon = L.divIcon({
+      className: '',
+      html: '<div class="penanda' + (kecil ? ' kecil' : '') + (buram ? ' buram' : '') +
+            (tunda ? ' tunda' : '') + '">' + (kecil ? '' : (i + 1)) + '</div>',
+      iconSize: kecil ? [12, 12] : [26, 26], iconAnchor: kecil ? [6, 6] : [13, 13]
+    });
+    var m = L.marker([t.lat, t.lng], {
+      icon: ikon,
+      draggable: bisaTulis() && !S.kunciTitik
+    }).addTo(S.lapisTitik);
+
+    m.on('click', function () { detailTitik(t); });
+    m.on('dragstart', function (e) { e.target._asal = { lat: t.lat, lng: t.lng }; });
+    m.on('dragend', function (e) { konfirmasiGeser(e.target, t); });
+    S.penanda[t.titik_id] = m;
+
+    // label panjang sisi — hanya kalau titiknya belum terlalu rapat
+    if (!padat && T.length >= 2 && (T.length > 2 || i === 0)) {
+      var b = T[(i + 1) % T.length];
+      L.marker([(t.lat + b.lat) / 2, (t.lng + b.lng) / 2], {
+        interactive: false,
+        icon: L.divIcon({
+          className: '',
+          html: '<div style="font:700 10px ui-monospace,monospace;background:rgba(255,255,255,.92);' +
+                'padding:1px 4px;border-radius:4px;white-space:nowrap;color:#14181F;transform:translate(-50%,-50%)">' +
+                jarak(t, b).toFixed(1) + ' m</div>',
+          iconSize: [0, 0]
+        })
+      }).addTo(S.lapisTitik);
+    }
+  });
+
+  perbaruiPapan();
+  if (S.kolaborasi && S.lapisTetangga) gambarTetangga();
+
+  if (paskan && T.length) {
+    try {
+      S.ikuti = false;
+      $('btnIkuti').classList.remove('nyala');
+      S.peta.fitBounds(L.latLngBounds(T.map(function (t) { return [t.lat, t.lng]; })).pad(0.3));
+    } catch (e) {}
+  }
+}
+
+/**
+ * Titik yang tergeser tidak pernah langsung tersimpan.
+ * 1. Geseran mikro (< 0,5 m) = jempol menyenggol layar -> dikembalikan diam-diam.
+ * 2. Geseran nyata -> minta konfirmasi, tampilkan jaraknya. Kalau ditolak,
+ *    penanda dan datanya kembali ke posisi semula, dan tidak ada yang dikirim ke server.
+ */
+function konfirmasiGeser(penanda, t) {
+  var asal = penanda._asal || { lat: t.lat, lng: t.lng };
+  var baru = penanda.getLatLng();
+  var geser = jarak(asal, { lat: baru.lat, lng: baru.lng });
+
+  function kembalikan(pesan, jenis) {
+    t.lat = asal.lat; t.lng = asal.lng;
+    penanda.setLatLng([asal.lat, asal.lng]);
+    gambarPeta();
+    if (pesan) toast(pesan, jenis);
+  }
+
+  if (!bolehEdit()) { kembalikan('Titik dikembalikan — lahan tidak bisa diedit.', 'galat'); return; }
+
+  if (geser < 0.5) { kembalikan(); return; } // senggolan jempol, bukan niat menggeser
+
+  var nama = t.kode_patok || ('titik #' + t.urutan);
+  var pesan = 'Geser ' + nama + ' sejauh ' + geser.toFixed(1) + ' m?\n\n' +
+    'Dari : ' + asal.lat.toFixed(6) + ', ' + asal.lng.toFixed(6) + '\n' +
+    'Ke   : ' + baru.lat.toFixed(6) + ', ' + baru.lng.toFixed(6) + '\n\n' +
+    (t.akurasi ? 'Titik ini terekam GPS dengan akurasi ' + t.akurasi + ' m.\n' : '') +
+    'Pilih Batal kalau tidak sengaja tergeser.';
+
+  if (!confirm(pesan)) { kembalikan('Geseran dibatalkan. Titik kembali ke posisi semula.'); return; }
+
+  t.lat = baru.lat;
+  t.lng = baru.lng;
+  t.sumber = 'manual';
+  gambarPeta();
+  simpanTitikKeServer(t).then(function () {
+    toast(nama + ' digeser ' + geser.toFixed(1) + ' m.', 'sukses');
+  });
+}
+
+/* Kunci titik: saat aktif, penanda sama sekali tidak bisa diseret. */
+$('btnKunci').onclick = function () {
+  S.kunciTitik = !S.kunciTitik;
+  localStorage.setItem('gu_kunci', S.kunciTitik ? '1' : '0');
+  $('btnKunci').classList.toggle('nyala', S.kunciTitik);
+  $('btnKunci').textContent = S.kunciTitik ? '🔒' : '🔓';
+  $('btnKolab').classList.toggle('nyala', S.kolaborasi);
+  toast(S.kunciTitik
+    ? 'Titik dikunci. Penanda tidak bisa digeser — aman saat sedang merekam.'
+    : 'Titik terbuka. Penanda bisa diseret untuk dikoreksi.', S.kunciTitik ? 'sukses' : undefined);
+  gambarPeta();
+};
+
+function perbaruiPapan() {
+  var T = S.aktif ? S.aktif.titik : [];
+  $('bacaLuas').textContent = (luasGeodesik(T) / 10000).toFixed(4);
+  $('bacaKeliling').textContent = Math.round(keliling(T));
+  $('bacaTitik').textContent = T.length;
+  if (S.aktif) $('subJudul').textContent = S.aktif.lahan.status + ' - ' + T.length + ' titik';
+  perbaruiBilahStatus();
+
+  var masalah = periksaGeometri(T);
+  var p = $('peringatanGeo');
+  if (masalah.length) {
+    p.textContent = 'Perhatian: ' + masalah.join('; ') + '. Pakai "Perbaiki geometri" di menu titik-tiga.';
+    p.classList.remove('tersembunyi');
+  } else {
+    p.classList.add('tersembunyi');
+  }
+}
+
+/* ---------- GPS ---------- */
+function mulaiGps() {
+  if (S.watchId !== null || !navigator.geolocation) return;
+  S.watchId = navigator.geolocation.watchPosition(function (pos) {
+    S.posisi = pos;
+    var c = pos.coords;
+    $('bacaAkurasi').textContent = c.accuracy ? c.accuracy.toFixed(1) : '-';
+    if (!sedangMerekam) $('rekamSub').textContent = 'GPS ' + (c.accuracy || 0).toFixed(1) + ' m';
+    $('btnRekam').disabled = false;
+
+    if (!S.peta) return;
+    var ll = [c.latitude, c.longitude];
+    if (!S.penandaGps) {
+      S.penandaGps = L.circleMarker(ll, { radius: 7, color: '#fff', weight: 2, fillColor: '#1B6AA8', fillOpacity: 1 }).addTo(S.peta);
+      S.lingkaranGps = L.circle(ll, { radius: c.accuracy || 10, color: '#1B6AA8', weight: 1, fillOpacity: 0.12 }).addTo(S.peta);
+    } else {
+      S.penandaGps.setLatLng(ll);
+      S.lingkaranGps.setLatLng(ll).setRadius(c.accuracy || 10);
+    }
+    if (S.ikuti) S.peta.setView(ll, Math.max(S.peta.getZoom(), 17), { animate: false });
+
+    if (S.autoRekam) {
+      var baru = { lat: c.latitude, lng: c.longitude };
+      if (!S.titikAutoTerakhir || jarak(S.titikAutoTerakhir, baru) >= S.autoJarak) {
+        S.titikAutoTerakhir = baru;
+        tambahTitik({ lat: c.latitude, lng: c.longitude, elevasi: c.altitude, akurasi: c.accuracy, sumber: 'auto' }, true);
+      }
+    }
+  }, function (err) {
+    $('rekamSub').textContent = 'GPS tidak aktif';
+    toast('GPS: ' + err.message + '. Aktifkan izin lokasi di browser.', 'galat');
+  }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+}
+
+$('btnIkuti').onclick = function () {
+  S.ikuti = !S.ikuti;
+  $('btnIkuti').classList.toggle('nyala', S.ikuti);
+  if (S.ikuti && S.posisi) S.peta.setView([S.posisi.coords.latitude, S.posisi.coords.longitude], 18);
+};
+$('btnModeTap').onclick = function () {
+  S.modeTap = !S.modeTap;
+  $('btnModeTap').classList.toggle('nyala', S.modeTap);
+  toast(S.modeTap ? 'Ketuk peta untuk menaruh titik.' : 'Mode ketuk peta dimatikan.');
+};
+
+/* ---------- REKAM TITIK (rata-rata sampel = lebih presisi) ---------- */
+var sedangMerekam = false;
+
+$('btnRekam').onclick = function () { rekamGps(parseInt(localStorage.getItem('gu_sampel') || '5', 10)); };
+
+function rekamGps(jumlahSampel) {
+  if (!S.aktif) { toast('Buka lahan dulu.', 'galat'); return; }
+  if (!bolehEdit()) return;
+  if (!navigator.geolocation) { toast('Perangkat tidak mendukung GPS.', 'galat'); return; }
+  if (sedangMerekam) return;
+
+  jumlahSampel = Math.max(1, jumlahSampel || 1);
+  sedangMerekam = true;
+  var btn = $('btnRekam');
+  btn.classList.add('merekam');
+  var sampel = [];
+
+  function ambil() {
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      sampel.push(pos.coords);
+      $('rekamSub').textContent = 'Sampel ' + sampel.length + '/' + jumlahSampel;
+      if (sampel.length < jumlahSampel) setTimeout(ambil, 900);
+      else rampung();
+    }, function (err) {
+      selesaiRekam();
+      toast('Gagal mengambil posisi: ' + err.message, 'galat');
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+  }
+
+  function rampung() {
+    // rata-rata berbobot: sampel dengan akurasi lebih baik diberi bobot lebih besar
+    var totBobot = 0, lat = 0, lng = 0, elev = 0, adaElev = 0, akMin = Infinity;
+    sampel.forEach(function (c) {
+      var bobot = 1 / Math.max(1, c.accuracy || 10);
+      totBobot += bobot;
+      lat += c.latitude * bobot;
+      lng += c.longitude * bobot;
+      if (c.altitude !== null && c.altitude !== undefined) { elev += c.altitude; adaElev++; }
+      if (c.accuracy && c.accuracy < akMin) akMin = c.accuracy;
+    });
+    var akRata = sampel.reduce(function (a, c) { return a + (c.accuracy || 0); }, 0) / sampel.length;
+    tambahTitik({
+      lat: lat / totBobot,
+      lng: lng / totBobot,
+      elevasi: adaElev ? Math.round(elev / adaElev * 10) / 10 : null,
+      akurasi: Math.round(akRata * 10) / 10,
+      sumber: 'gps'
+    });
+    selesaiRekam();
+  }
+
+  function selesaiRekam() {
+    sedangMerekam = false;
+    btn.classList.remove('merekam');
+    $('rekamSub').textContent = S.posisi ? 'GPS ' + (S.posisi.coords.accuracy || 0).toFixed(1) + ' m' : 'GPS siap';
+  }
+
+  ambil();
+}
+
+/* Rekam otomatis sambil berjalan menyusuri batas */
+$('btnAutoRekam').onclick = function () {
+  if (!S.aktif || !bolehEdit()) return;
+  if (S.autoRekam) {
+    S.autoRekam = false;
+    S.titikAutoTerakhir = null;
+    $('btnAutoRekam').classList.remove('nyala');
+    toast('Rekam otomatis dimatikan.');
+    return;
+  }
+  var jrk = prompt('Rekam titik otomatis setiap berapa meter berjalan?', String(S.autoJarak));
+  if (jrk === null) return;
+  var n = parseFloat(jrk);
+  if (!isFinite(n) || n < 2) { toast('Isi minimal 2 meter.', 'galat'); return; }
+  S.autoJarak = n;
+  S.autoRekam = true;
+  S.titikAutoTerakhir = null;
+  $('btnAutoRekam').classList.add('nyala');
+  toast('Rekam otomatis aktif: titik baru setiap ' + n + ' m. Jalan menyusuri batas.', 'sukses');
+};
+
+/* ---------- TAMBAH / SIMPAN TITIK ---------- */
+function tambahTitik(t, senyap) {
+  var T = S.aktif.titik;
+  var tol = S.config.toleransi_akurasi || 10;
+
+  var titik = {
+    titik_id: uid('ttk'),
+    lahan_id: S.aktif.lahan.lahan_id,
+    urutan: T.length + 1,
+    kode_patok: 'T' + (T.length + 1),
+    lat: t.lat, lng: t.lng,
+    elevasi: (t.elevasi === undefined || t.elevasi === null) ? null : Math.round(t.elevasi * 10) / 10,
+    akurasi: (t.akurasi === undefined || t.akurasi === null) ? null : Math.round(t.akurasi * 100) / 100,
+    sumber: t.sumber || 'gps',
+    catatan: '',
+    dibuat_pada: new Date().toISOString()
+  };
+
+  T.push(titik);
+  gambarPeta();
+  simpanTitikKeServer(titik);
+
+  if (!senyap) {
+    var pesan = 'Titik ' + titik.kode_patok + ' terekam';
+    if (titik.akurasi) pesan += ' (akurasi ' + titik.akurasi + ' m)';
+    toast(pesan, titik.akurasi && titik.akurasi > tol ? 'galat' : 'sukses');
+    if (titik.akurasi && titik.akurasi > tol) {
+      toast('Akurasi di atas toleransi ' + tol + ' m. Tunggu sinyal membaik lalu rekam ulang titik ini.', 'galat');
+    }
+  }
+}
+
+function simpanTitikKeServer(titik) {
+  var salinan = JSON.parse(JSON.stringify(titik));
+  if (!navigator.onLine) {
+    antrekan({ jenis: 'simpanTitik', lahan_id: S.aktif.lahan.lahan_id, titik: salinan });
+    gambarPeta();
+    return Promise.resolve();
+  }
+  return api('simpanTitik', { lahan_id: S.aktif.lahan.lahan_id, titik: salinan })
+    .then(function () { perbaruiPapan(); })
+    .catch(function (e) {
+      antrekan({ jenis: 'simpanTitik', lahan_id: S.aktif.lahan.lahan_id, titik: salinan });
+      toast('Server tidak terjangkau. Titik masuk antrean sinkron.', 'galat');
+      gambarPeta();
+    });
+}
+
+function hapusTitikLokal(t) {
+  if (!bolehEdit()) return;
+  if (!confirm('Hapus titik ' + (t.kode_patok || '') + '?')) return;
+  S.aktif.titik = S.aktif.titik.filter(function (x) { return x.titik_id !== t.titik_id; });
+  S.aktif.titik.forEach(function (x, i) { x.urutan = i + 1; });
+  gambarPeta();
+  tutupLembar();
+
+  if (!navigator.onLine) {
+    antrekan({ jenis: 'hapusTitik', lahan_id: S.aktif.lahan.lahan_id, titik_id: t.titik_id });
+    return;
+  }
+  api('hapusTitik', { lahan_id: S.aktif.lahan.lahan_id, titik_id: t.titik_id })
+    .then(function () { toast('Titik dihapus.'); })
+    .catch(function (e) {
+      antrekan({ jenis: 'hapusTitik', lahan_id: S.aktif.lahan.lahan_id, titik_id: t.titik_id });
+      toast('Masuk antrean sinkron.', 'galat');
+    });
+}
+
+/* ---------- DETAIL SATU TITIK ---------- */
+function detailTitik(t) {
+  var u = keUTM(t.lat, t.lng);
+  var i = S.aktif.titik.indexOf(t);
+  var berikut = S.aktif.titik[(i + 1) % S.aktif.titik.length];
+  var sisi = (S.aktif.titik.length >= 2 && berikut)
+    ? jarak(t, berikut).toFixed(2) + ' m, azimut ' + azimuth(t, berikut).toFixed(1) + ' derajat'
+    : '-';
+
+  bukaLembar('Titik ' + (i + 1),
+    '<table class="tabel">' +
+    '<tr><th>Kode patok</th><td>' + esc(t.kode_patok || '-') + '</td></tr>' +
+    '<tr><th>Lintang</th><td class="num">' + t.lat.toFixed(7) + '</td></tr>' +
+    '<tr><th>Bujur</th><td class="num">' + t.lng.toFixed(7) + '</td></tr>' +
+    '<tr><th>UTM ' + esc(u.zona) + '</th><td class="num">' + u.easting.toFixed(2) + ' E / ' + u.northing.toFixed(2) + ' N</td></tr>' +
+    '<tr><th>Elevasi</th><td class="num">' + (t.elevasi != null ? t.elevasi + ' m' : '-') + '</td></tr>' +
+    '<tr><th>Akurasi</th><td class="num">' + (t.akurasi != null ? t.akurasi + ' m' : '-') + '</td></tr>' +
+    '<tr><th>Ke titik berikut</th><td class="num">' + esc(sisi) + '</td></tr>' +
+    '<tr><th>Sumber</th><td>' + esc(t.sumber) + '</td></tr>' +
+    '</table>' +
+    '<div class="grup" style="margin-top:14px"><label class="lbl">Kode patok</label>' +
+      '<input id="tKode" class="inp" value="' + esc(t.kode_patok || '') + '"></div>' +
+    '<div class="grup"><label class="lbl">Catatan lapangan</label>' +
+      '<textarea id="tCatatan" class="inp" placeholder="mis. patok beton, berbatasan dengan saluran irigasi">' + esc(t.catatan || '') + '</textarea></div>' +
+    (bisaTulis()
+      ? '<div class="aksi-baris"><button class="btn btn-bahaya" id="tHapus">Hapus titik</button>' +
+        '<button class="btn btn-utama" id="tSimpan">Simpan</button></div>'
+      : ''));
+
+  if (bisaTulis()) {
+    $('tHapus').onclick = function () { hapusTitikLokal(t); };
+    $('tSimpan').onclick = function () {
+      if (!bolehEdit()) return;
+      t.kode_patok = $('tKode').value.trim();
+      t.catatan = $('tCatatan').value.trim();
+      simpanTitikKeServer(t).then(function () { toast('Titik diperbarui.', 'sukses'); });
+      tutupLembar();
+    };
+  }
+}
+
+/* ---------- DAFTAR TITIK ---------- */
+$('btnDaftarTitik').onclick = function () {
+  if (!S.aktif) return;
+  var T = S.aktif.titik;
+  if (!T.length) { bukaLembar('Daftar Titik', '<div class="kosong"><b>Belum ada titik</b>Tekan "Rekam Titik" di lapangan atau aktifkan mode ketuk peta.</div>'); return; }
+
+  var baris = T.map(function (t, i) {
+    var b = T[(i + 1) % T.length];
+    var buram = t.akurasi && t.akurasi > (S.config.toleransi_akurasi || 10);
+    return '<div class="baris-titik" data-id="' + esc(t.titik_id) + '">' +
+      '<div class="kode' + (buram ? ' buram' : '') + '">' + (i + 1) + '</div>' +
+      '<div class="koor"><b>' + t.lat.toFixed(6) + ', ' + t.lng.toFixed(6) + '</b>' +
+      '<span>' + esc(t.kode_patok || '-') + ' - ' + (t.akurasi != null ? 'akurasi ' + t.akurasi + ' m' : 'tanpa akurasi') +
+      (T.length > 1 ? ' - sisi ' + jarak(t, b).toFixed(1) + ' m' : '') + '</span></div>' +
+      '<button class="ikon-btn" data-lihat="' + esc(t.titik_id) + '">&#8250;</button></div>';
+  }).join('');
+
+  bukaLembar('Daftar Titik (' + T.length + ')', baris);
+
+  Array.prototype.forEach.call($('lembarIsi').querySelectorAll('.baris-titik'), function (r) {
+    r.onclick = function () {
+      var t = S.aktif.titik.filter(function (x) { return x.titik_id === r.dataset.id; })[0];
+      if (t) { S.peta.setView([t.lat, t.lng], 19); detailTitik(t); }
+    };
+  });
+};
+
+/* ---------- MENU ALAT ---------- */
+$('btnAlat').onclick = function () {
+  if (!S.aktif) return;
+  var L0 = S.aktif.lahan;
+  var m = [
+    ['&#9998;', 'Ubah data lahan', 'Nama, pemilik, sertifikat, lokasi', 'ubah'],
+    ['&#9873;', 'Ubah status', 'Sekarang: ' + L0.status, 'status'],
+    ['&#128295;', 'Perbaiki geometri', 'Urutkan ulang titik agar batas tidak menyilang', 'perbaiki'],
+    ['&#128229;', 'Impor koordinat', 'GeoJSON, KML, atau CSV', 'impor'],
+    ['&#128228;', 'Ekspor data', 'GeoJSON, KML, GPX, CSV', 'ekspor'],
+    ['&#128196;', 'Cetak berita acara', 'PDF lengkap dengan sketsa & tabel koordinat', 'pdf'],
+    ['&#128247;', 'Dokumentasi foto', (S.aktif.lampiran || []).length + ' foto tersimpan', 'foto'],
+    ['&#9997;', 'Tanda tangan digital', (S.aktif.ttd || []).length + ' dari 3 pihak sudah menandatangani', 'ttd'],
+    ['&#9888;', 'Periksa tumpang tindih', S.konflik.length ? S.konflik.length + ' bidang bertindihan' : 'Bandingkan dengan bidang surveyor lain', 'tumpang'],
+    ['&#128101;', S.kolaborasi ? 'Matikan kolaborasi' : 'Nyalakan kolaborasi',
+     S.kolaborasi ? 'Rekan & bidang sekitar sedang tampil di peta' : 'Tampilkan rekan surveyor & bidang sekitar', 'kolab'],
+    ['&#10010;', S.modeTap ? 'Matikan mode ketuk peta' : 'Mode ketuk peta',
+     S.modeTap ? 'Ketukan di peta akan menaruh titik' : 'Taruh titik dengan mengetuk peta', 'tap'],
+    [S.berbagiLokasi ? '&#128225;' : '&#128683;', S.berbagiLokasi ? 'Berhenti berbagi lokasi' : 'Bagikan lokasi saya',
+     S.berbagiLokasi ? 'Rekan bisa melihat posisi Anda di peta' : 'Posisi Anda tidak terlihat rekan', 'berbagi'],
+    ['&#9881;', 'Jumlah sampel GPS', 'Sekarang: ' + (localStorage.getItem('gu_sampel') || '5') + ' sampel per titik', 'sampel'],
+    [S.kunciTitik ? '&#128274;' : '&#128275;', S.kunciTitik ? 'Buka kunci titik' : 'Kunci titik',
+     S.kunciTitik ? 'Penanda sedang terkunci, tidak bisa digeser' : 'Penanda bisa diseret — hati-hati tersenggol', 'kunci']
+  ];
+  if (S.pengguna.role === 'admin') m.push(['&#128465;', 'Hapus lahan', 'Diarsipkan, tidak hilang permanen', 'hapus']);
+
+  bukaLembar('Alat', '<div class="menu-daftar">' + m.map(function (x) {
+    return '<button class="menu-item" data-aksi="' + x[3] + '"><span class="em">' + x[0] + '</span>' +
+      '<span><b>' + x[1] + '</b><small>' + esc(x[2]) + '</small></span></button>';
+  }).join('') + '</div>');
+
+  Array.prototype.forEach.call($('lembarIsi').querySelectorAll('.menu-item'), function (b) {
+    b.onclick = function () { jalankanAlat(b.dataset.aksi); };
+  });
+};
+
+function jalankanAlat(aksi) {
+  var L0 = S.aktif.lahan;
+  if (aksi === 'ubah') return formLahan(L0);
+  if (aksi === 'status') return formStatus();
+  if (aksi === 'perbaiki') return perbaikiGeometri();
+  if (aksi === 'impor') { tutupLembar(); $('inputImpor').click(); return; }
+  if (aksi === 'ekspor') return menuEkspor();
+  if (aksi === 'pdf') return cetakPdf();
+  if (aksi === 'foto') return panelFoto();
+  if (aksi === 'ttd') return panelTtd();
+  if (aksi === 'kunci') { tutupLembar(); $('btnKunci').click(); return; }
+  if (aksi === 'tumpang') return panelTumpang();
+  if (aksi === 'kolab') { tutupLembar(); $('btnKolab').click(); return; }
+  if (aksi === 'tap') { tutupLembar(); $('btnModeTap').click(); return; }
+  if (aksi === 'berbagi') {
+    S.berbagiLokasi = !S.berbagiLokasi;
+    localStorage.setItem('gu_berbagi', S.berbagiLokasi ? '1' : '0');
+    if (!S.berbagiLokasi && navigator.onLine) api('denyut', { device_id: S.deviceId, berbagi: false }).catch(function () {});
+    tutupLembar();
+    toast(S.berbagiLokasi ? 'Lokasi Anda dibagikan ke rekan.' : 'Lokasi Anda disembunyikan dari rekan.');
+    return;
+  }
+  if (aksi === 'sampel') {
+    var n = prompt('Berapa sampel GPS dirata-ratakan tiap kali merekam titik?\n(1 = cepat, 5-10 = lebih presisi untuk patok)',
+      localStorage.getItem('gu_sampel') || '5');
+    if (n && parseInt(n, 10) > 0) {
+      localStorage.setItem('gu_sampel', String(parseInt(n, 10)));
+      toast('Tiap rekam titik akan memakai ' + parseInt(n, 10) + ' sampel.', 'sukses');
+      tutupLembar();
+    }
+    return;
+  }
+  if (aksi === 'hapus') {
+    if (!confirm('Arsipkan lahan "' + L0.nama + '"? Data tetap tersimpan di Sheet, hanya disembunyikan.')) return;
+    tunggu(true, 'Menghapus...');
+    api('hapusLahan', { lahan_id: L0.lahan_id })
+      .then(function () { tutupLembar(); S.aktif = null; toast('Lahan diarsipkan.', 'sukses'); pindah('Beranda'); })
+      .catch(function (e) { toast(e.message, 'galat'); })
+      .then(function () { tunggu(false); });
+  }
+}
+
+/* ---------- STATUS: bilah cepat di peta + menu lengkap ---------- */
+function perbaruiBilahStatus() {
+  var st = S.aktif ? S.aktif.lahan.status : '';
+  Array.prototype.forEach.call($('bilahStatus').querySelectorAll('.chip'), function (b) {
+    b.classList.toggle('aktif', b.dataset.st === st);
+    b.disabled = !bisaTulis();
+    b.title = 'Ubah status menjadi ' + b.dataset.st;
+  });
+}
+
+Array.prototype.forEach.call(document.querySelectorAll('#bilahStatus .chip'), function (b) {
+  b.onclick = function () {
+    if (!S.aktif) return;
+    var st = b.dataset.st;
+    if (st === S.aktif.lahan.status) return;
+    if (!bisaTulis()) { toast('Peran "viewer" hanya bisa melihat dan mencetak.', 'galat'); return; }
+    if (st === 'Selesai' && !confirm('Tandai pengukuran "' + S.aktif.lahan.nama + '" sebagai SELESAI?\n' +
+        'Lahan akan terkunci untuk editor (butuh minimal 3 titik dan geometri bersih).')) return;
+    ubahStatus(st, '');
+  };
+});
+
+function ubahStatus(st, catatan) {
+  var sebelum = S.aktif.lahan.status;
+  tunggu(true, 'Menyimpan status...');
+  return api('ubahStatusLahan', { lahan_id: S.aktif.lahan.lahan_id, status: st, catatan: catatan || '' })
+    .then(function () {
+      S.aktif.lahan.status = st;
+      tutupLembar();
+      perbaruiPapan();
+      toast('Status: ' + st, st === 'Selesai' ? 'sukses' : undefined);
+    })
+    .catch(function (e) {
+      S.aktif.lahan.status = sebelum;
+      perbaruiBilahStatus();
+      if (e.message.indexOf('[TUMPANG]') === 0) {
+        var pesan = e.message.replace('[TUMPANG] ', '');
+        if (confirm(pesan + '\n\nTetap tandai SELESAI? Konflik ini akan tercatat di log audit.')) {
+          return ubahStatusPaksa(st, catatan);
+        }
+        panelTumpang();
+        return;
+      }
+      alert(e.message);
+    })
+    .then(function () { tunggu(false); });
+}
+
+function ubahStatusPaksa(st, catatan) {
+  tunggu(true, 'Menyimpan status...');
+  return api('ubahStatusLahan', {
+    lahan_id: S.aktif.lahan.lahan_id, status: st,
+    catatan: (catatan || '') + ' [tumpang tindih diketahui dan tetap diselesaikan]',
+    abaikan_tumpang: true
+  })
+    .then(function () {
+      S.aktif.lahan.status = st;
+      tutupLembar();
+      perbaruiPapan();
+      toast('Status: ' + st + ' (dengan catatan tumpang tindih)', 'sukses');
+    })
+    .catch(function (e) { alert(e.message); })
+    .then(function () { tunggu(false); });
+}
+
+function formStatus() {
+  var status = ['Draf', 'Aktif', 'Dijeda', 'Selesai'];
+  bukaLembar('Ubah Status Pengukuran',
+    '<div class="menu-daftar">' + status.map(function (s) {
+      return '<button class="menu-item" data-st="' + s + '"><span class="em">' +
+        (s === 'Selesai' ? '&#10003;' : s === 'Dijeda' ? '&#10074;&#10074;' : s === 'Aktif' ? '&#9679;' : '&#9675;') +
+        '</span><span><b>' + s + '</b><small>' + ({
+          'Draf': 'Baru dibuat, belum diukur',
+          'Aktif': 'Sedang diukur di lapangan',
+          'Dijeda': 'Ditunda (hujan, sengketa batas, dll.)',
+          'Selesai': 'Terkunci; butuh minimal 3 titik & geometri bersih'
+        })[s] + '</small></span></button>';
+    }).join('') + '</div>' +
+    '<div class="grup" style="margin-top:10px"><label class="lbl">Alasan / catatan</label>' +
+    '<input id="sCatatan" class="inp" placeholder="opsional, tercatat di log aktivitas"></div>');
+
+  Array.prototype.forEach.call($('lembarIsi').querySelectorAll('.menu-item'), function (b) {
+    b.onclick = function () { ubahStatus(b.dataset.st, $('sCatatan').value.trim()); };
+  });
+}
+
+function perbaikiGeometri() {
+  var T = S.aktif.titik;
+  if (T.length < 3) { toast('Butuh minimal 3 titik.', 'galat'); return; }
+  var masalahSebelum = periksaGeometri(T).length;
+  var urut = urutkanMelingkar(T);
+  var masalahSesudah = periksaGeometri(urut).length;
+
+  if (!masalahSebelum && !masalahSesudah) { toast('Geometri sudah rapi.', 'sukses'); tutupLembar(); return; }
+  if (masalahSesudah >= masalahSebelum && masalahSebelum > 0) {
+    toast('Urutan otomatis belum menyelesaikan semua silangan. Periksa titik secara manual.', 'galat');
+    return;
+  }
+  if (!confirm('Urutkan ulang ' + T.length + ' titik searah keliling bidang?\nLuas akan dihitung ulang.')) return;
+
+  tunggu(true, 'Memperbaiki geometri...');
+  api('urutkanTitik', {
+    lahan_id: S.aktif.lahan.lahan_id,
+    urutan: urut.map(function (t) { return t.titik_id; })
+  })
+    .then(function (d) {
+      S.aktif.titik = d.titik;
+      tutupLembar();
+      gambarPeta(true);
+      toast('Geometri diperbaiki. Luas: ' + d.geometri.luas_ha.toFixed(4) + ' ha', 'sukses');
+    })
+    .catch(function (e) { toast(e.message, 'galat'); })
+    .then(function () { tunggu(false); });
+}
+
+/* ---------- EKSPOR ---------- */
+function menuEkspor() {
+  var f = [
+    ['geojson', 'GeoJSON', 'Untuk QGIS, ArcGIS, WebGIS'],
+    ['kml', 'KML', 'Untuk Google Earth / Maps'],
+    ['gpx', 'GPX', 'Untuk GPS handheld (Garmin dll.)'],
+    ['csv', 'CSV', 'Tabel koordinat + UTM, sisi, azimut']
+  ];
+  bukaLembar('Ekspor Data', '<div class="menu-daftar">' + f.map(function (x) {
+    return '<button class="menu-item" data-f="' + x[0] + '"><span class="em">&#8681;</span>' +
+      '<span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></button>';
+  }).join('') + '</div>');
+
+  Array.prototype.forEach.call($('lembarIsi').querySelectorAll('.menu-item'), function (b) {
+    b.onclick = function () {
+      tunggu(true, 'Menyiapkan berkas...');
+      api('ekspor', { lahan_id: S.aktif.lahan.lahan_id, format: b.dataset.f })
+        .then(function (d) {
+          var blob = new Blob([d.isi], { type: d.mime });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = d.nama_file;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+          tutupLembar();
+          toast('Berkas ' + d.nama_file + ' diunduh.', 'sukses');
+        })
+        .catch(function (e) { toast(e.message, 'galat'); })
+        .then(function () { tunggu(false); });
+    };
+  });
+}
+
+function cetakPdf() {
+  tunggu(true, 'Menyusun berita acara...');
+  api('buatPdf', { lahan_id: S.aktif.lahan.lahan_id, opsi: {} })
+    .then(function (d) {
+      tutupLembar();
+      bukaLembar('Berita Acara Siap',
+        '<p style="margin-top:0">Berkas <b>' + esc(d.nama_file) + '</b> tersimpan di Google Drive.</p>' +
+        '<div class="aksi-baris">' +
+        '<a class="btn" href="' + esc(d.url) + '" target="_blank" rel="noopener">Buka di Drive</a>' +
+        '<a class="btn btn-utama" href="' + esc(d.unduh) + '" target="_blank" rel="noopener">Unduh PDF</a></div>');
+    })
+    .catch(function (e) { toast(e.message, 'galat'); })
+    .then(function () { tunggu(false); });
+}
+
+/* ---------- IMPOR ---------- */
+$('inputImpor').onchange = function (e) {
+  var berkas = e.target.files[0];
+  if (!berkas || !S.aktif) return;
+  var nama = berkas.name.toLowerCase();
+  var format = /\.kml$/.test(nama) ? 'kml' : (/\.csv|\.txt$/.test(nama) ? 'csv' : 'geojson');
+
+  var pembaca = new FileReader();
+  pembaca.onload = function () {
+    tunggu(true, 'Mengimpor koordinat...');
+    api('impor', { lahan_id: S.aktif.lahan.lahan_id, format: format, isi: pembaca.result })
+      .then(function (d) {
+        S.aktif.titik = d.titik;
+        gambarPeta(true);
+        toast(d.jumlah + ' titik diimpor. Luas: ' + d.geometri.luas_ha.toFixed(4) + ' ha', 'sukses');
+      })
+      .catch(function (err) { toast(err.message, 'galat'); })
+      .then(function () { tunggu(false); $('inputImpor').value = ''; });
+  };
+  pembaca.readAsText(berkas);
+};
+
+/* ---------- FOTO ---------- */
+$('btnFoto').onclick = function () {
+  if (!S.aktif || !bolehEdit()) return;
+  $('inputFoto').click();
+};
+
+$('inputFoto').onchange = function (e) {
+  var berkas = e.target.files[0];
+  if (!berkas) return;
+  tunggu(true, 'Memampatkan foto...');
+  kompresGambar(berkas, 1280, 0.72)
+    .then(function (dataUrl) {
+      var c = S.posisi ? S.posisi.coords : null;
+      return api('unggahLampiran', {
+        lahan_id: S.aktif.lahan.lahan_id,
+        nama_file: 'patok_' + Date.now() + '.jpg',
+        mime: 'image/jpeg',
+        data_base64: dataUrl,
+        lat: c ? c.latitude : '',
+        lng: c ? c.longitude : '',
+        catatan: 'Diambil di lapangan'
+      });
+    })
+    .then(function (d) {
+      S.aktif.lampiran = S.aktif.lampiran || [];
+      S.aktif.lampiran.push({ lampiran_id: d.lampiran_id, url: d.url, tipe: 'foto', nama_file: 'patok.jpg' });
+      toast('Foto tersimpan di Google Drive.', 'sukses');
+    })
+    .catch(function (err) { toast(err.message, 'galat'); })
+    .then(function () { tunggu(false); $('inputFoto').value = ''; });
+};
+
+$('inputLogo').onchange = function (e) {
+  var berkas = e.target.files[0];
+  if (!berkas) return;
+  tunggu(true, 'Menyiapkan logo...');
+  // Logo dipadatkan agresif: harus muat di satu sel Sheets (batas 50.000 karakter).
+  kompresLogo(berkas)
+    .then(function (dataUri) { return api('simpanLogo', { data_uri: dataUri }); })
+    .then(function () {
+      S.config.ada_logo = true;
+      toast('Logo tersimpan. Akan muncul di kop berita acara.', 'sukses');
+      if ($('cPratinjau')) return api('ambilLogo', {}).then(function (d) {
+        $('cPratinjau').innerHTML = '<img src="' + esc(d.data) + '" alt="Logo"><span>Logo terpasang</span>';
+      });
+    })
+    .catch(function (err) { toast(err.message, 'galat'); })
+    .then(function () { tunggu(false); $('inputLogo').value = ''; });
+};
+
+/**
+ * Logo: pertahankan PNG (transparansi terjaga untuk kop laporan).
+ * Kalau hasilnya kelewat besar untuk satu sel Sheets, jatuhkan ke JPEG
+ * di atas latar putih — itu tetap rapi di kertas.
+ */
+$('inputAvatar').onchange = function (e) {
+  var berkas = e.target.files[0];
+  if (!berkas) return;
+  tunggu(true, 'Menyiapkan foto profil...');
+  kompresAvatar(berkas)
+    .then(function (dataUri) {
+      return api('simpanFotoProfil', { data_uri: dataUri }).then(function () {
+        S.avatar[S.pengguna.username] = {
+          foto: dataUri, nama: S.pengguna.nama_lengkap, role: S.pengguna.role
+        };
+        try { localStorage.setItem('gu_avatar', JSON.stringify(S.avatar)); } catch (err) {}
+        gambarPengaturan();
+        toast('Foto profil tersimpan. Rekan akan melihatnya di peta.', 'sukses');
+      });
+    })
+    .catch(function (err) { toast(err.message, 'galat'); })
+    .then(function () { tunggu(false); $('inputAvatar').value = ''; });
+};
+
+/** Foto profil dipotong jadi persegi (dari tengah) lalu diperkecil ke 160 px. */
+function kompresAvatar(berkas) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    var pembaca = new FileReader();
+    pembaca.onload = function () { img.src = pembaca.result; };
+    pembaca.onerror = function () { reject(new Error('Gagal membaca berkas.')); };
+    img.onerror = function () { reject(new Error('Format gambar tidak didukung.')); };
+    img.onload = function () {
+      var sisi = Math.min(img.width, img.height);
+      var sx = (img.width - sisi) / 2, sy = (img.height - sisi) / 2;
+      var k = document.createElement('canvas');
+      k.width = 160; k.height = 160;
+      k.getContext('2d').drawImage(img, sx, sy, sisi, sisi, 0, 0, 160, 160);
+
+      var mutu = 0.8;
+      var data = k.toDataURL('image/jpeg', mutu);
+      while (data.length > 44000 && mutu > 0.35) {
+        mutu -= 0.1;
+        data = k.toDataURL('image/jpeg', mutu);
+      }
+      if (data.length > 44000) return reject(new Error('Foto terlalu besar. Coba gambar lain.'));
+      resolve(data);
+    };
+    pembaca.readAsDataURL(berkas);
+  });
+}
+
+function kompresLogo(berkas) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    var pembaca = new FileReader();
+    pembaca.onload = function () { img.src = pembaca.result; };
+    pembaca.onerror = function () { reject(new Error('Gagal membaca berkas.')); };
+    img.onerror = function () { reject(new Error('Format gambar tidak didukung.')); };
+    img.onload = function () {
+      var skala = Math.min(1, 320 / Math.max(img.width, img.height));
+      var k = document.createElement('canvas');
+      k.width = Math.max(1, Math.round(img.width * skala));
+      k.height = Math.max(1, Math.round(img.height * skala));
+      var ctx = k.getContext('2d');
+      ctx.drawImage(img, 0, 0, k.width, k.height);
+
+      var png = k.toDataURL('image/png');
+      if (png.length <= 44000) return resolve(png);
+
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, k.width, k.height);
+      var mutu = 0.85;
+      var jpg = k.toDataURL('image/jpeg', mutu);
+      while (jpg.length > 44000 && mutu > 0.4) {
+        mutu -= 0.1;
+        jpg = k.toDataURL('image/jpeg', mutu);
+      }
+      if (jpg.length > 44000) return reject(new Error('Logo terlalu rumit. Pakai gambar yang lebih sederhana.'));
+      resolve(jpg);
+    };
+    pembaca.readAsDataURL(berkas);
+  });
+}
+
+function kompresGambar(berkas, maksSisi, mutu) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    var pembaca = new FileReader();
+    pembaca.onload = function () { img.src = pembaca.result; };
+    pembaca.onerror = function () { reject(new Error('Gagal membaca berkas.')); };
+    img.onload = function () {
+      var skala = Math.min(1, maksSisi / Math.max(img.width, img.height));
+      var kanvas = document.createElement('canvas');
+      kanvas.width = Math.round(img.width * skala);
+      kanvas.height = Math.round(img.height * skala);
+      kanvas.getContext('2d').drawImage(img, 0, 0, kanvas.width, kanvas.height);
+      resolve(kanvas.toDataURL('image/jpeg', mutu));
+    };
+    img.onerror = function () { reject(new Error('Format gambar tidak didukung.')); };
+    pembaca.readAsDataURL(berkas);
+  });
+}
+
+function panelFoto() {
+  var foto = (S.aktif.lampiran || []).filter(function (a) { return a.tipe === 'foto'; });
+  var isi = foto.length
+    ? '<div class="galeri">' + foto.map(function (a) {
+        return '<figure><img src="' + esc(a.url) + '" alt="' + esc(a.nama_file) + '">' +
+          (bisaTulis() ? '<button data-hapus="' + esc(a.lampiran_id) + '">&#10005;</button>' : '') + '</figure>';
+      }).join('') + '</div>'
+    : '<div class="kosong"><b>Belum ada foto</b>Ketuk ikon kamera di peta untuk memotret patok.</div>';
+
+  bukaLembar('Dokumentasi Lapangan', isi +
+    (bisaTulis() ? '<button class="btn btn-utama btn-lebar" id="fotoBaru">Ambil Foto</button>' : ''));
+
+  if (bisaTulis()) $('fotoBaru').onclick = function () { tutupLembar(); $('inputFoto').click(); };
+
+  Array.prototype.forEach.call($('lembarIsi').querySelectorAll('[data-hapus]'), function (b) {
+    b.onclick = function (ev) {
+      ev.stopPropagation();
+      if (!confirm('Hapus foto ini?')) return;
+      api('hapusLampiran', { lampiran_id: b.dataset.hapus })
+        .then(function () {
+          S.aktif.lampiran = S.aktif.lampiran.filter(function (a) { return a.lampiran_id !== b.dataset.hapus; });
+          panelFoto();
+          toast('Foto dihapus.');
+        })
+        .catch(function (e) { toast(e.message, 'galat'); });
+    };
+  });
+}
+
+/* ============================================================
+   KOLABORASI: rekan surveyor & bidang sekitar di peta yang sama
+   Denyut nadi tiap 10 detik: kirim posisi sendiri, terima posisi rekan
+   dan daftar bidang di sekitar. Koordinat bidang hanya diambil ulang
+   kalau versinya berubah — supaya hemat kuota dan baterai.
+   ============================================================ */
+var JEDA_DENYUT = 10000;
+
+function warnaDari(teks) {
+  var h = 0;
+  for (var i = 0; i < teks.length; i++) h = (h * 31 + teks.charCodeAt(i)) % 360;
+  return 'hsl(' + h + ',68%,42%)';
+}
+function inisial(nama) {
+  return String(nama || '?').trim().split(/\s+/).slice(0, 2)
+    .map(function (k) { return k.charAt(0).toUpperCase(); }).join('');
+}
+
+$('btnKolab').onclick = function () {
+  S.kolaborasi = !S.kolaborasi;
+  localStorage.setItem('gu_kolab', S.kolaborasi ? '1' : '0');
+  $('btnKolab').classList.toggle('nyala', S.kolaborasi);
+  if (S.kolaborasi) {
+    mulaiDenyut();
+    toast('Kolaborasi aktif. Rekan surveyor dan bidang sekitar akan muncul di peta.', 'sukses');
+  } else {
+    hentikanDenyut(true);
+    toast('Kolaborasi dimatikan. Lokasi Anda tidak lagi dibagikan.');
+  }
+};
+
+function mulaiDenyut() {
+  if (!S.kolaborasi || !S.aktif) return;
+  if (!S.lapisRekan) S.lapisRekan = L.layerGroup().addTo(S.peta);
+  if (!S.lapisTetangga) S.lapisTetangga = L.layerGroup().addTo(S.peta);
+  clearInterval(S.timerDenyut);
+  denyut();
+  S.timerDenyut = setInterval(denyut, JEDA_DENYUT);
+}
+
+function hentikanDenyut(bersihkan) {
+  clearInterval(S.timerDenyut);
+  S.timerDenyut = null;
+  if (bersihkan) {
+    // beri tahu server supaya penanda kita hilang dari peta rekan
+    if (navigator.onLine) api('denyut', { device_id: S.deviceId, berbagi: false }).catch(function () {});
+    if (S.lapisRekan) S.lapisRekan.clearLayers();
+    if (S.lapisTetangga) S.lapisTetangga.clearLayers();
+    S.konflik = [];
+    $('peringatanTumpang').classList.add('tersembunyi');
+  }
+}
+
+function denyut() {
+  if (!S.kolaborasi || !S.aktif || !navigator.onLine) return;
+  var c = S.posisi ? S.posisi.coords : null;
+
+  api('denyut', {
+    device_id: S.deviceId,
+    lahan_id: S.aktif.lahan.lahan_id,
+    lahan_nama: S.aktif.lahan.nama,
+    berbagi: S.berbagiLokasi,
+    lat: c ? c.latitude : '',
+    lng: c ? c.longitude : '',
+    akurasi: c ? c.accuracy : ''
+  })
+    .then(function (d) {
+      gambarRekan(d.rekan || []);
+      return segarkanTetangga(d.tetangga || []);
+    })
+    .catch(function (e) { /* denyut gagal itu wajar di lapangan — coba lagi 10 detik lagi */ });
+}
+
+function avatarHtml(username, nama, ukuran) {
+  var a = S.avatar[username];
+  var warna = warnaDari(username);
+  if (a && a.foto) return '<img src="' + esc(a.foto) + '" alt="' + esc(nama) + '">';
+  return '<span style="background:' + warna + ';width:100%;height:100%;display:grid;place-items:center">' +
+         esc(inisial(nama)) + '</span>';
+}
+
+/** Ambil foto profil rekan yang belum ada di cache (sekali per username). */
+function pastikanAvatar(usernames) {
+  var perlu = usernames.filter(function (u) { return !S.avatar[u]; });
+  if (!perlu.length) return Promise.resolve();
+  return api('ambilAvatar', { usernames: perlu })
+    .then(function (d) {
+      Object.keys(d).forEach(function (u) { S.avatar[u] = d[u]; });
+      try { localStorage.setItem('gu_avatar', JSON.stringify(S.avatar)); } catch (e) { /* penuh: abaikan */ }
+    })
+    .catch(function () {});
+}
+
+function gambarRekan(rekan) {
+  var baru = rekan.map(function (r) { return r.username; });
+  pastikanAvatar(baru).then(function () { lukisRekan(rekan); });
+}
+
+function lukisRekan(rekan) {
+  S.lapisRekan.clearLayers();
+
+  rekan.forEach(function (r) {
+    var warna = warnaDari(r.username);
+    var basi = r.detik_lalu > 45;
+
+    // lingkaran akurasi digambar lebih dulu, penanda menimpanya
+    if (r.akurasi) {
+      L.circle([r.lat, r.lng], { radius: r.akurasi, color: warna, weight: 1.5, fillOpacity: 0.10 })
+        .addTo(S.lapisRekan);
+    }
+
+    var ikon = L.divIcon({
+      className: '',
+      html: '<div class="rekan' + (basi ? ' basi' : '') + '">' +
+            '<div class="bulat-rekan" style="background:' + warna + '">' +
+            avatarHtml(r.username, r.nama) + '</div>' +
+            '<div class="nama-rekan">' + esc(String(r.nama).split(' ')[0]) +
+            (r.lahan_nama ? ' &middot; ' + esc(r.lahan_nama) : '') + '</div></div>',
+      iconSize: [34, 34],      // ukuran nyata -> bulatan tidak gepeng
+      iconAnchor: [17, 17]     // jangkar di tengah -> tepat di pusat lingkaran akurasi
+    });
+
+    L.marker([r.lat, r.lng], { icon: ikon, zIndexOffset: 600, riseOnHover: true })
+      .addTo(S.lapisRekan)
+      .on('click', function () { infoRekan(r); });
+  });
+}
+
+function infoRekan(r) {
+  var a = S.avatar[r.username] || {};
+  var jrk = S.posisi
+    ? jarak({ lat: S.posisi.coords.latitude, lng: S.posisi.coords.longitude }, { lat: r.lat, lng: r.lng })
+    : null;
+
+  bukaLembar('Rekan Surveyor',
+    '<div class="profil">' +
+      '<div class="avatar" style="background:' + warnaDari(r.username) + '">' +
+      avatarHtml(r.username, r.nama) + '</div>' +
+      '<div><b>' + esc(r.nama) + '</b>' +
+      '<span>' + esc(r.username) + (a.role ? ' &middot; ' + esc(a.role) : '') + '</span></div>' +
+    '</div>' +
+    '<table class="tabel">' +
+    '<tr><th>Sedang mengukur</th><td>' + esc(r.lahan_nama || '-') + '</td></tr>' +
+    '<tr><th>Akurasi GPS</th><td class="num">' + (r.akurasi ? r.akurasi + ' m' : '-') + '</td></tr>' +
+    '<tr><th>Jarak dari Anda</th><td class="num">' + (jrk !== null ? jrk.toFixed(0) + ' m' : '-') + '</td></tr>' +
+    '<tr><th>Kabar terakhir</th><td>' + r.detik_lalu + ' detik lalu' +
+      (r.detik_lalu > 45 ? ' (sinyal lemah?)' : '') + '</td></tr>' +
+    '<tr><th>Koordinat</th><td class="num">' + r.lat.toFixed(6) + ', ' + r.lng.toFixed(6) + '</td></tr>' +
+    '</table>' +
+    '<div class="aksi-baris"><button class="btn" id="rZoom">Bawa peta ke rekan</button></div>');
+
+  $('rZoom').onclick = function () {
+    S.ikuti = false;
+    $('btnIkuti').classList.remove('nyala');
+    S.peta.setView([r.lat, r.lng], 19);
+    tutupLembar();
+  };
+}
+
+/** Ambil koordinat bidang tetangga hanya untuk yang baru / berubah. */
+function segarkanTetangga(daftar) {
+  var perluAmbil = daftar.filter(function (l) {
+    var c = S.cacheTetangga[l.lahan_id];
+    return !c || c.versi !== l.versi;
+  }).map(function (l) { return l.lahan_id; });
+
+  // buang bidang yang sudah tidak dilaporkan lagi
+  Object.keys(S.cacheTetangga).forEach(function (id) {
+    if (!daftar.some(function (l) { return l.lahan_id === id; })) delete S.cacheTetangga[id];
+  });
+  daftar.forEach(function (l) {
+    if (S.cacheTetangga[l.lahan_id]) S.cacheTetangga[l.lahan_id].info = l;
+  });
+
+  if (!perluAmbil.length) { gambarTetangga(); return Promise.resolve(); }
+
+  return api('poligon', { ids: perluAmbil.slice(0, 20) })
+    .then(function (poligon) {
+      daftar.forEach(function (l) {
+        if (poligon[l.lahan_id]) {
+          S.cacheTetangga[l.lahan_id] = { versi: l.versi, poly: poligon[l.lahan_id], info: l };
+        }
+      });
+      gambarTetangga();
+    })
+    .catch(function () { gambarTetangga(); });
+}
+
+function gambarTetangga() {
+  if (!S.lapisTetangga) return;
+  S.lapisTetangga.clearLayers();
+
+  var saya = S.aktif.titik.map(function (t) { return { lat: t.lat, lng: t.lng }; });
+  S.konflik = [];
+
+  Object.keys(S.cacheTetangga).forEach(function (id) {
+    var c = S.cacheTetangga[id];
+    if (!c.poly || c.poly.length < 3) return;
+
+    var tt = tumpangTindih(saya, c.poly);
+    if (tt.tumpang) {
+      S.konflik.push({
+        lahan_id: id, nama: c.info.nama, surveyor: c.info.surveyor,
+        status: c.info.status, luas_m2: tt.luas_m2,
+        persen_saya: saya.length >= 3 ? Math.round(tt.luas_m2 / luasGeodesik(saya) * 1000) / 10 : 0
+      });
+    }
+
+    var warna = tt.tumpang ? '#B42318' : '#1B6AA8';
+    var poli = L.polygon(c.poly.map(function (p) { return [p.lat, p.lng]; }), {
+      color: warna, weight: 2, dashArray: tt.tumpang ? null : '6,5',
+      fillOpacity: tt.tumpang ? 0.28 : 0.06
+    }).addTo(S.lapisTetangga);
+
+    poli.on('click', function () { infoTetangga(c, tt); });
+
+    var pusat = poli.getBounds().getCenter();
+    L.marker(pusat, {
+      interactive: false,
+      icon: L.divIcon({
+        className: '',
+        html: '<div class="label-bidang' + (tt.tumpang ? ' bentrok' : '') + '">' +
+              esc(c.info.nama) + ' &middot; ' + esc(String(c.info.surveyor || '').split(' ')[0]) + '</div>',
+        iconSize: [0, 0]
+      })
+    }).addTo(S.lapisTetangga);
+  });
+
+  perbaruiPeringatanTumpang();
+}
+
+function infoTetangga(c, tt) {
+  bukaLembar('Bidang: ' + c.info.nama,
+    '<table class="tabel">' +
+    '<tr><th>Surveyor</th><td>' + esc(c.info.surveyor || '-') + '</td></tr>' +
+    '<tr><th>Status</th><td>' + esc(c.info.status) + '</td></tr>' +
+    '<tr><th>Luas</th><td class="num">' + (c.info.luas_ha || 0).toFixed(4) + ' ha</td></tr>' +
+    '<tr><th>Jumlah titik</th><td class="num">' + c.info.jumlah_titik + '</td></tr>' +
+    (tt.tumpang
+      ? '<tr><th>Tumpang tindih</th><td class="num" style="color:var(--merah);font-weight:700">' +
+        tt.luas_m2.toFixed(2) + ' m²</td></tr>'
+      : '') +
+    '</table>' +
+    (tt.tumpang
+      ? '<p style="color:var(--merah);font-size:12.5px">Bidang Anda dan bidang ini bertindihan. ' +
+        'Periksa patok bersama di lapangan sebelum menyelesaikan pengukuran.</p>'
+      : ''));
+}
+
+function perbaruiPeringatanTumpang() {
+  var p = $('peringatanTumpang');
+  if (!S.konflik.length) { p.classList.add('tersembunyi'); return; }
+  var total = S.konflik.reduce(function (a, k) { return a + k.luas_m2; }, 0);
+  p.textContent = '⚠ Tumpang tindih dengan ' + S.konflik.length + ' bidang (±' +
+                  total.toFixed(0) + ' m²) — ketuk untuk rincian';
+  p.classList.remove('tersembunyi');
+  p.onclick = panelTumpang;
+}
+
+/** Daftar konflik. Angka resmi diambil dari server agar konsisten bagi semua surveyor. */
+function panelTumpang() {
+  if (!S.aktif) return;
+  tunggu(true, 'Memeriksa tumpang tindih...');
+  api('periksaTumpang', { lahan_id: S.aktif.lahan.lahan_id })
+    .then(function (d) {
+      var isi = d.jumlah
+        ? d.konflik.map(function (k) {
+            return '<div class="baris-konflik">' +
+              '<div class="kotak-luas"><b>' + k.luas_m2.toFixed(0) + '</b><span>m² bertindih</span></div>' +
+              '<div class="koor"><b>' + esc(k.nama) + '</b>' +
+              '<span>' + esc(k.surveyor || 'tanpa surveyor') + ' &middot; ' + esc(k.status) + ' &middot; ' +
+              k.persen_saya + '% dari bidang Anda' +
+              (k.jenis === 'termuat' ? ' &middot; bidang Anda seluruhnya di dalam bidang ini' :
+               k.jenis === 'memuat' ? ' &middot; bidang ini seluruhnya di dalam bidang Anda' : '') +
+              '</span></div></div>';
+          }).join('')
+        : '<div class="kosong"><b>Tidak ada tumpang tindih</b>Bidang Anda tidak bertindihan dengan bidang mana pun.</div>';
+
+      bukaLembar('Tumpang Tindih', isi +
+        (d.jumlah
+          ? '<p class="jejak" style="text-align:left">Luas dihitung server dengan pencacahan grid, ' +
+            'berlaku juga untuk bidang cekung. Selisih ±1% wajar. Bidang Anda: ' +
+            (d.luas_saya_m2 / 10000).toFixed(4) + ' ha.</p>'
+          : ''));
+    })
+    .catch(function (e) { toast(e.message, 'galat'); })
+    .then(function () { tunggu(false); });
+}
+
+/* ---------- TANDA TANGAN DIGITAL ---------- */
+var PERAN_TTD = [
+  { kunci: 'surveyor', judul: 'Surveyor', jabatan: 'Surveyor' },
+  { kunci: 'pemilik', judul: 'Pemilik / Pemohon', jabatan: 'Pemilik / Pemohon' },
+  { kunci: 'pejabat', judul: 'Pejabat', jabatan: 'Kepala Desa / Lurah' }
+];
+
+function panelTtd() {
+  var ada = {};
+  (S.aktif.ttd || []).forEach(function (t) { ada[t.peran] = t; });
+
+  var isi = PERAN_TTD.map(function (p) {
+    var t = ada[p.kunci];
+    return '<div class="ttd-baris" data-peran="' + p.kunci + '">' +
+      (t ? '<img src="' + esc(t.data_uri) + '" alt="tanda tangan">'
+         : '<div class="kosong-ttd">belum</div>') +
+      '<div class="isi"><b>' + esc(p.judul) + '</b><span>' +
+      (t ? esc(t.nama) + ' &middot; ' + esc(String(t.ditandatangani_pada).substring(0, 10))
+         : 'Ketuk untuk menandatangani') + '</span></div>' +
+      (t && bisaTulis() ? '<button class="ikon-btn" data-hapus-ttd="' + esc(t.ttd_id) + '">&#10005;</button>' : '') +
+      '</div>';
+  }).join('');
+
+  bukaLembar('Tanda Tangan Digital', isi +
+    '<p class="jejak" style="text-align:left">Tanda tangan tercetak di berita acara PDF, lengkap dengan tanggalnya. ' +
+    'Tanda tangan ulang akan menimpa yang lama.</p>');
+
+  Array.prototype.forEach.call($('lembarIsi').querySelectorAll('.ttd-baris'), function (b) {
+    b.onclick = function () {
+      if (!bisaTulis()) { toast('Peran "viewer" tidak bisa menandatangani.', 'galat'); return; }
+      padTtd(b.dataset.peran, ada[b.dataset.peran]);
+    };
+  });
+  Array.prototype.forEach.call($('lembarIsi').querySelectorAll('[data-hapus-ttd]'), function (b) {
+    b.onclick = function (ev) {
+      ev.stopPropagation();
+      if (!confirm('Hapus tanda tangan ini?')) return;
+      api('hapusTtd', { ttd_id: b.dataset.hapusTtd })
+        .then(function () {
+          S.aktif.ttd = (S.aktif.ttd || []).filter(function (t) { return t.ttd_id !== b.dataset.hapusTtd; });
+          panelTtd();
+          toast('Tanda tangan dihapus.');
+        })
+        .catch(function (e) { toast(e.message, 'galat'); });
+    };
+  });
+}
+
+function padTtd(peran, adaTtd) {
+  var def = PERAN_TTD.filter(function (p) { return p.kunci === peran; })[0];
+  var namaAwal = (adaTtd && adaTtd.nama) ||
+    (peran === 'surveyor' ? (S.aktif.lahan.surveyor || '') :
+     peran === 'pemilik' ? (S.aktif.lahan.pemilik || '') : '');
+
+  bukaLembar('Tanda Tangan — ' + def.judul,
+    '<div class="grup"><label class="lbl">Nama penanda tangan</label>' +
+      '<input id="nTtd" class="inp" value="' + esc(namaAwal) + '"></div>' +
+    '<div class="grup"><label class="lbl">Jabatan</label>' +
+      '<input id="jTtd" class="inp" value="' + esc((adaTtd && adaTtd.jabatan) || def.jabatan) + '"></div>' +
+    '<label class="lbl">Goreskan tanda tangan di kotak</label>' +
+    '<canvas id="padTtd" class="pad-ttd"></canvas>' +
+    '<div class="pad-info"><span>Pakai jari atau stilus</span>' +
+      '<button class="btn btn-kecil" id="bersihTtd">Bersihkan</button></div>' +
+    '<div class="aksi-baris"><button class="btn" id="batalTtd">Batal</button>' +
+      '<button class="btn btn-utama" id="simpanTtd">Simpan</button></div>');
+
+  var kanvas = $('padTtd');
+  var nisbah = window.devicePixelRatio || 1;
+  var kotak = kanvas.getBoundingClientRect();
+  kanvas.width = kotak.width * nisbah;
+  kanvas.height = kotak.height * nisbah;
+  var ctx = kanvas.getContext('2d');
+  ctx.scale(nisbah, nisbah);
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#14181F';
+
+  var menggores = false, adaGoresan = false;
+
+  function posisi(e) {
+    var r = kanvas.getBoundingClientRect();
+    var titik = e.touches ? e.touches[0] : e;
+    return { x: titik.clientX - r.left, y: titik.clientY - r.top };
+  }
+  function mulai(e) {
+    e.preventDefault();
+    menggores = true; adaGoresan = true;
+    var p = posisi(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  }
+  function gerak(e) {
+    if (!menggores) return;
+    e.preventDefault();
+    var p = posisi(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }
+  function henti() { menggores = false; }
+
+  kanvas.addEventListener('pointerdown', mulai);
+  kanvas.addEventListener('pointermove', gerak);
+  kanvas.addEventListener('pointerup', henti);
+  kanvas.addEventListener('pointerleave', henti);
+
+  $('bersihTtd').onclick = function () {
+    ctx.clearRect(0, 0, kanvas.width, kanvas.height);
+    adaGoresan = false;
+  };
+  $('batalTtd').onclick = panelTtd;
+
+  $('simpanTtd').onclick = function () {
+    if (!adaGoresan) { toast('Goreskan tanda tangan dulu.', 'galat'); return; }
+    var nama = $('nTtd').value.trim();
+    if (!nama) { toast('Nama penanda tangan wajib diisi.', 'galat'); return; }
+
+    // PNG transparan; diperkecil kalau melebihi batas satu sel Sheets
+    var kecil = document.createElement('canvas');
+    kecil.width = 460;
+    kecil.height = Math.round(460 * (kanvas.height / kanvas.width));
+    kecil.getContext('2d').drawImage(kanvas, 0, 0, kecil.width, kecil.height);
+    var data = kecil.toDataURL('image/png');
+    if (data.length > 44000) { toast('Goresan terlalu rumit. Sederhanakan lalu coba lagi.', 'galat'); return; }
+
+    tunggu(true, 'Menyimpan tanda tangan...');
+    api('simpanTtd', {
+      lahan_id: S.aktif.lahan.lahan_id, peran: peran, nama: nama,
+      jabatan: $('jTtd').value.trim(), data_uri: data
+    })
+      .then(function (d) {
+        S.aktif.ttd = (S.aktif.ttd || []).filter(function (t) { return t.peran !== peran; });
+        S.aktif.ttd.push({
+          ttd_id: d.ttd_id, peran: peran, nama: nama, jabatan: $('jTtd').value.trim(),
+          data_uri: data, ditandatangani_pada: new Date().toISOString()
+        });
+        panelTtd();
+        toast('Tanda tangan tersimpan.', 'sukses');
+      })
+      .catch(function (e) { toast(e.message, 'galat'); })
+      .then(function () { tunggu(false); });
+  };
+}
+
+/* ---------- AKTIVITAS ---------- */
+function muatLog() {
+  $('daftarLog').innerHTML = '<div class="kosong">Memuat aktivitas...</div>';
+  api('daftarLog', { limit: 80 })
+    .then(function (d) {
+      if (!d.length) { $('daftarLog').innerHTML = '<div class="kosong"><b>Belum ada aktivitas</b>Semua tindakan tercatat otomatis di sini.</div>'; return; }
+      $('daftarLog').innerHTML = d.map(function (g) {
+        return '<div class="log"><div class="log-tanda"></div><div>' +
+          '<b>' + esc(g.aksi) + '</b> <time>' + esc(waktuSingkat(g.waktu)) + '</time>' +
+          '<p>' + esc(g.detail) + '</p>' +
+          '<time>' + esc(g.aktor) + '</time></div></div>';
+      }).join('');
+    })
+    .catch(function (e) { $('daftarLog').innerHTML = '<div class="kosong">' + esc(e.message) + '</div>'; });
+}
+
+function waktuSingkat(iso) {
+  var d = new Date(iso);
+  if (isNaN(d)) return String(iso);
+  return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+/* ---------- PENGATURAN ---------- */
+function gambarPengaturan() {
+  var p = S.pengguna;
+  var html =
+    '<div class="kartu" style="cursor:default">' +
+      '<div class="profil" style="margin-bottom:0">' +
+        '<div class="avatar" id="avatarSaya" style="background:' + warnaDari(p.username) + '">' +
+        avatarHtml(p.username, p.nama_lengkap) + '</div>' +
+        '<div style="flex:1"><b>' + esc(p.nama_lengkap) + '</b>' +
+        '<span>' + esc(p.username) + ' &middot; ' + esc(p.role) + '</span>' +
+        '<button class="btn btn-kecil" id="btnFotoProfil" style="margin-top:6px">Ubah foto profil</button> ' +
+        (S.avatar[p.username] && S.avatar[p.username].foto
+          ? '<button class="btn btn-kecil btn-bahaya" id="btnHapusFoto" style="margin-top:6px">Hapus</button>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="menu-daftar" style="margin-top:14px;background:#fff;border:1px solid var(--garis);border-radius:14px;padding:0 12px">' +
+    '<button class="menu-item" id="mSandi"><span class="em">&#128273;</span><span><b>Ganti password</b><small>Ubah kata sandi akun ini</small></span></button>' +
+    (S.antrean.length
+      ? '<button class="menu-item" id="mSinkron"><span class="em">&#8635;</span><span><b>Sinkronkan sekarang</b><small>' + S.antrean.length + ' perubahan menunggu</small></span></button>'
+      : '') +
+    (p.role === 'admin'
+      ? '<button class="menu-item" id="mPengguna"><span class="em">&#128101;</span><span><b>Kelola pengguna</b><small>Tambah surveyor, atur peran</small></span></button>' +
+        '<button class="menu-item" id="mKonfig"><span class="em">&#9881;</span><span><b>Pengaturan aplikasi</b><small>Nama instansi, toleransi GPS, WhatsApp</small></span></button>'
+      : '') +
+    '<button class="menu-item" id="mKeluar"><span class="em">&#8617;</span><span><b>Keluar</b><small>Akhiri sesi di perangkat ini</small></span></button>' +
+    '</div>' +
+    '<p class="jejak">GeoUkur GPS v' + esc(window.APP_VERSION) + ' - data tersimpan di Google Sheets</p>';
+
+  $('isiPengaturan').innerHTML = html;
+
+  // pastikan foto profil sendiri ada di cache, lalu segarkan tampilannya
+  if (!S.avatar[p.username]) {
+    api('profilSaya', {})
+      .then(function (d) {
+        S.avatar[d.username] = { foto: d.foto, nama: d.nama_lengkap, role: d.role };
+        try { localStorage.setItem('gu_avatar', JSON.stringify(S.avatar)); } catch (e) {}
+        if (halamanAktif === 'Pengaturan') gambarPengaturan();
+      })
+      .catch(function () {});
+  }
+
+  $('btnFotoProfil').onclick = function () { $('inputAvatar').click(); };
+  if ($('btnHapusFoto')) $('btnHapusFoto').onclick = function () {
+    if (!confirm('Hapus foto profil Anda?')) return;
+    api('simpanFotoProfil', { data_uri: '' })
+      .then(function () {
+        S.avatar[p.username] = { foto: '', nama: p.nama_lengkap, role: p.role };
+        localStorage.setItem('gu_avatar', JSON.stringify(S.avatar));
+        gambarPengaturan();
+        toast('Foto profil dihapus.');
+      })
+      .catch(function (e) { toast(e.message, 'galat'); });
+  };
+
+  $('mSandi').onclick = formGantiSandi;
+  $('mKeluar').onclick = function () { keluar(false); };
+  if ($('mSinkron')) $('mSinkron').onclick = sinkronkan;
+  if ($('mPengguna')) $('mPengguna').onclick = panelPengguna;
+  if ($('mKonfig')) $('mKonfig').onclick = panelKonfig;
+}
+
+function formGantiSandi() {
+  bukaLembar('Ganti Password',
+    '<div class="grup"><label class="lbl">Password lama</label><input id="pLama" class="inp" type="password"></div>' +
+    '<div class="grup"><label class="lbl">Password baru (min. 6 karakter)</label><input id="pBaru" class="inp" type="password"></div>' +
+    '<div class="aksi-baris"><button class="btn" id="pBatal">Batal</button>' +
+    '<button class="btn btn-utama" id="pSimpan">Simpan</button></div>');
+
+  $('pBatal').onclick = tutupLembar;
+  $('pSimpan').onclick = function () {
+    tunggu(true, 'Menyimpan...');
+    api('gantiSandi', { lama: $('pLama').value, baru: $('pBaru').value })
+      .then(function () { tutupLembar(); toast('Password diperbarui.', 'sukses'); })
+      .catch(function (e) { toast(e.message, 'galat'); })
+      .then(function () { tunggu(false); });
+  };
+}
+
+function panelPengguna() {
+  tunggu(true, 'Memuat pengguna...');
+  api('daftarPengguna', {})
+    .then(function (d) {
+      var isi = d.map(function (u) {
+        S.avatar[u.username] = S.avatar[u.username] || { foto: u.foto, nama: u.nama_lengkap, role: u.role };
+        return '<div class="baris-titik">' +
+          '<div class="kode" style="overflow:hidden;background:' + warnaDari(u.username) + '">' +
+          (u.foto ? '<img src="' + esc(u.foto) + '" style="width:100%;height:100%;object-fit:cover">'
+                  : esc(inisial(u.nama_lengkap))) + '</div>' +
+          '<div class="koor"><b>' + esc(u.nama_lengkap) + '</b><span>' + esc(u.username) + ' - ' + esc(u.role) +
+          (u.aktif ? '' : ' - nonaktif') + '</span></div>' +
+          '<button class="ikon-btn" data-ubah="' + esc(u.user_id) + '">&#9998;</button>' +
+          '<button class="ikon-btn" data-hapus="' + esc(u.user_id) + '">&#10005;</button></div>';
+      }).join('');
+      bukaLembar('Kelola Pengguna', isi + '<button class="btn btn-utama btn-lebar" id="uBaru">Tambah Pengguna</button>');
+
+      $('uBaru').onclick = function () { formPengguna(null); };
+      Array.prototype.forEach.call($('lembarIsi').querySelectorAll('[data-ubah]'), function (b) {
+        b.onclick = function () {
+          formPengguna(d.filter(function (x) { return x.user_id === b.dataset.ubah; })[0]);
+        };
+      });
+      Array.prototype.forEach.call($('lembarIsi').querySelectorAll('[data-hapus]'), function (b) {
+        b.onclick = function () {
+          if (!confirm('Hapus pengguna ini?')) return;
+          api('hapusPengguna', { user_id: b.dataset.hapus })
+            .then(function () { toast('Pengguna dihapus.', 'sukses'); panelPengguna(); })
+            .catch(function (e) { toast(e.message, 'galat'); });
+        };
+      });
+    })
+    .catch(function (e) { toast(e.message, 'galat'); })
+    .then(function () { tunggu(false); });
+}
+
+function formPengguna(u) {
+  u = u || {};
+  var peran = ['admin', 'editor', 'viewer'].map(function (r) {
+    return '<option' + (u.role === r ? ' selected' : '') + '>' + r + '</option>';
+  }).join('');
+
+  bukaLembar(u.user_id ? 'Ubah Pengguna' : 'Pengguna Baru',
+    (u.user_id ? '' : '<div class="grup"><label class="lbl">Username</label><input id="uNama" class="inp" autocapitalize="none"></div>') +
+    '<div class="grup"><label class="lbl">Nama lengkap</label><input id="uLengkap" class="inp" value="' + esc(u.nama_lengkap || '') + '"></div>' +
+    '<div class="grup"><label class="lbl">Peran</label><select id="uPeran" class="inp">' + peran + '</select>' +
+    '<small style="color:var(--tinta-3);font-size:11.5px">admin: semua akses - editor: ukur & edit - viewer: lihat & cetak</small></div>' +
+    '<div class="grup"><label class="lbl">Password' + (u.user_id ? ' baru (kosongkan bila tidak diubah)' : '') + '</label>' +
+    '<input id="uSandi" class="inp" type="password"></div>' +
+    (u.user_id ? '<div class="grup"><label class="lbl">Status</label><select id="uAktif" class="inp">' +
+      '<option value="true"' + (u.aktif ? ' selected' : '') + '>Aktif</option>' +
+      '<option value="false"' + (!u.aktif ? ' selected' : '') + '>Nonaktif</option></select></div>' : '') +
+    '<div class="aksi-baris"><button class="btn" id="uBatal">Batal</button>' +
+    '<button class="btn btn-utama" id="uSimpan">Simpan</button></div>');
+
+  $('uBatal').onclick = panelPengguna;
+  $('uSimpan').onclick = function () {
+    var p = {
+      user_id: u.user_id,
+      username: u.user_id ? undefined : ($('uNama').value || '').trim(),
+      nama_lengkap: $('uLengkap').value.trim(),
+      role: $('uPeran').value,
+      password: $('uSandi').value || undefined,
+      aktif: $('uAktif') ? $('uAktif').value === 'true' : true
+    };
+    tunggu(true, 'Menyimpan...');
+    api('simpanPengguna', p)
+      .then(function () { toast('Pengguna tersimpan.', 'sukses'); panelPengguna(); })
+      .catch(function (e) { toast(e.message, 'galat'); })
+      .then(function () { tunggu(false); });
+  };
+}
+
+/**
+ * Kumpulkan isi form pengaturan.
+ * wa_admin SELALU dikirim (termasuk saat kosong) supaya nomor bisa dihapus;
+ * fonnte_token hanya dikirim kalau diisi, supaya token lama tidak terhapus
+ * gara-gara kolomnya memang sengaja dibiarkan kosong.
+ */
+function kumpulkanKonfig() {
+  var p = {
+    app_name: $('cNama').value.trim(),
+    instansi: $('cInst').value.trim(),
+    logo_url: $('cLogo').value.trim(),
+    toleransi_akurasi: $('cTol').value,
+    peta_zoom: $('cZoom').value,
+    label_tiap: $('cLabel').value,
+    peta_lat: $('cLat').value,
+    peta_lng: $('cLng').value,
+    wa_admin: $('cWa').value.trim()
+  };
+  if ($('cFonnte').value.trim()) p.fonnte_token = $('cFonnte').value.trim();
+  return p;
+}
+
+function panelKonfig() {
+  var c = S.config;
+  bukaLembar('Pengaturan Aplikasi',
+    '<div class="grup"><label class="lbl">Nama aplikasi</label><input id="cNama" class="inp" value="' + esc(c.app_name || '') + '"></div>' +
+    '<div class="grup"><label class="lbl">Nama instansi (kop laporan)</label><input id="cInst" class="inp" value="' + esc(c.instansi || '') + '"></div>' +
+    '<div class="grup"><label class="lbl">Logo kop laporan</label>' +
+      '<div class="pratinjau-logo" id="cPratinjau"><span>Belum ada logo</span></div>' +
+      '<div class="aksi-baris" style="margin-top:0">' +
+      '<button class="btn" id="cUnggahLogo">Unggah berkas</button>' +
+      '<button class="btn btn-bahaya" id="cHapusLogo">Hapus logo</button></div>' +
+      '<small style="color:var(--tinta-3);font-size:11.5px">Berkas gambar disimpan langsung di dalam basis data, ' +
+      'jadi selalu ikut tercetak di PDF. URL eksternal di bawah hanya cadangan dan sering gagal dimuat saat PDF dibuat.</small></div>' +
+    '<div class="grup"><label class="lbl">URL logo (opsional)</label><input id="cLogo" class="inp" value="' + esc(c.logo_url || '') + '" placeholder="https://..."></div>' +
+    '<div class="dua-kolom">' +
+    '<div class="grup"><label class="lbl">Toleransi akurasi GPS (m)</label><input id="cTol" class="inp" type="number" value="' + (c.toleransi_akurasi || 10) + '"></div>' +
+    '<div class="grup"><label class="lbl">Label tiap N titik otomatis</label><input id="cLabel" class="inp" type="number" min="1" value="' + (c.label_tiap || 5) + '"></div>' +
+    '</div>' +
+    '<div class="dua-kolom">' +
+    '<div class="grup"><label class="lbl">Zoom peta awal</label><input id="cZoom" class="inp" type="number" value="' + (c.peta_zoom || 13) + '"></div>' +
+    '</div>' +
+    '<div class="dua-kolom">' +
+    '<div class="grup"><label class="lbl">Lintang tengah peta</label><input id="cLat" class="inp" value="' + (c.peta_lat || '') + '"></div>' +
+    '<div class="grup"><label class="lbl">Bujur tengah peta</label><input id="cLng" class="inp" value="' + (c.peta_lng || '') + '"></div>' +
+    '</div>' +
+    '<div class="grup"><label class="lbl">Token Fonnte (notifikasi WhatsApp, opsional)</label>' +
+      '<input id="cFonnte" class="inp" placeholder="memuat..."></div>' +
+    '<div class="grup"><label class="lbl">Nomor WA admin</label>' +
+      '<input id="cWa" class="inp" type="tel" inputmode="numeric" placeholder="081234567890">' +
+      '<small style="color:var(--tinta-3);font-size:11.5px">Boleh 08xx… atau 62xx…, otomatis dirapikan. ' +
+      'Kosongkan untuk mematikan notifikasi.</small></div>' +
+    '<button class="btn btn-lebar" id="cUjiWa" style="margin-top:0">Kirim pesan uji ke WhatsApp</button>' +
+    '<div class="aksi-baris"><button class="btn" id="cBatal">Batal</button>' +
+    '<button class="btn btn-utama" id="cSimpan">Simpan</button></div>');
+
+  // Nomor WA & token tidak ikut konfigurasi publik (dianggap rahasia), jadi harus diambil
+  // khusus di sini — kalau tidak, kolomnya selalu tampak kosong dan seolah gagal tersimpan.
+  api('ambilRahasia', {})
+    .then(function (r) {
+      if ($('cWa')) $('cWa').value = r.wa_admin || '';
+      if ($('cFonnte')) $('cFonnte').placeholder = r.ada_token
+        ? 'Tersimpan (' + r.ekor_token + ') — isi untuk mengganti'
+        : 'kosongkan bila tidak dipakai';
+    })
+    .catch(function () {
+      if ($('cFonnte')) $('cFonnte').placeholder = 'kosongkan bila tidak dipakai';
+    });
+
+  $('cUjiWa').onclick = function () {
+    tunggu(true, 'Mengirim pesan uji...');
+    api('simpanKonfigurasi', kumpulkanKonfig())     // simpan dulu, baru uji
+      .then(function () { return api('ujiWa', {}); })
+      .then(function (d) { toast('Pesan uji terkirim ke ' + d.target + '.', 'sukses'); })
+      .catch(function (e) { toast(e.message, 'galat'); })
+      .then(function () { tunggu(false); });
+  };
+
+  // pratinjau logo yang tersimpan
+  if (c.ada_logo) {
+    api('ambilLogo', {}).then(function (d) {
+      if (d.data && $('cPratinjau')) {
+        $('cPratinjau').innerHTML = '<img src="' + esc(d.data) + '" alt="Logo"><span>Logo terpasang</span>';
+      }
+    }).catch(function () {});
+  }
+
+  $('cUnggahLogo').onclick = function () { $('inputLogo').click(); };
+  $('cHapusLogo').onclick = function () {
+    if (!confirm('Hapus logo dari kop laporan?')) return;
+    api('hapusLogo', {})
+      .then(function () {
+        S.config.ada_logo = false;
+        $('cLogo').value = '';
+        $('cPratinjau').innerHTML = '<span>Belum ada logo</span>';
+        toast('Logo dihapus.');
+      })
+      .catch(function (e) { toast(e.message, 'galat'); });
+  };
+
+  $('cBatal').onclick = tutupLembar;
+  $('cSimpan').onclick = function () {
+    tunggu(true, 'Menyimpan...');
+    api('simpanKonfigurasi', kumpulkanKonfig())
+      .then(function (cfg) {
+        S.config = cfg;
+        localStorage.setItem('gu_config', JSON.stringify(cfg));
+        tutupLembar();
+        toast('Pengaturan tersimpan.', 'sukses');
+      })
+      .catch(function (e) { toast(e.message, 'galat'); })
+      .then(function () { tunggu(false); });
+  };
+}
+
+/* ---------- MULAI ---------- */
+function mulaiAplikasi() {
+  var cfgTersimpan = JSON.parse(localStorage.getItem('gu_config') || 'null');
+  if (cfgTersimpan) S.config = cfgTersimpan;
+
+  document.documentElement.style.setProperty('--oranye', S.config.warna_utama || '#E8590C');
+  $('layarLogin').classList.add('tersembunyi');
+  $('aplikasi').classList.remove('tersembunyi');
+  $('btnIkuti').classList.add('nyala');
+  $('btnKunci').classList.toggle('nyala', S.kunciTitik);
+  $('btnKunci').textContent = S.kunciTitik ? '🔒' : '🔓';
+  $('btnKolab').classList.toggle('nyala', S.kolaborasi);
+  simpanAntrean();
+  statusJaringan();
+  pindah('Beranda');
+}
+
+(function boot() {
+  $('merekNama').textContent = S.config.app_name || 'GeoUkur GPS';
+  $('merekInstansi').textContent = S.config.instansi || 'Sistem Pengukuran Lahan';
+  if (S.token && S.pengguna) mulaiAplikasi();
+})();
+
+})();
+</script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js'); });
+    }
+  </script>
+</body>
+</html>
