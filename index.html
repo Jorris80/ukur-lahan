@@ -209,6 +209,18 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
   background:rgba(20,24,31,.84);color:#fff;font-size:10.5px;padding:3px 7px;border-radius:7px;white-space:nowrap}
 .rekan.basi{opacity:.45}
 
+/* ---------- Lightbox foto ---------- */
+.lightbox{position:fixed;inset:0;z-index:3000;background:rgba(10,12,16,.94);display:flex;flex-direction:column;
+  align-items:center;justify-content:center}
+.lb-bingkai{flex:1;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  touch-action:none}
+.lb-bingkai img{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center center;
+  transition:transform .12s ease-out;will-change:transform;user-select:none;-webkit-user-drag:none}
+.lb-tutup{position:absolute;top:calc(10px + var(--aman-atas));right:12px;z-index:2;width:44px;height:44px;
+  border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;font-size:19px;cursor:pointer}
+.lb-keterangan{color:#D6DBE2;font-size:12.5px;padding:12px 16px calc(16px + var(--aman-bawah));text-align:center}
+.bisa-zoom{cursor:zoom-in}
+
 /* ---------- Obrolan tim ---------- */
 .kepala-obrolan{position:relative;color:#fff;font-size:20px;min-width:40px;min-height:40px;padding:0}
 .lencana-pesan{position:absolute;top:0;right:0;min-width:18px;height:18px;border-radius:999px;
@@ -285,7 +297,13 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
   border-radius:10px;background:#FBFBF9;margin-bottom:8px}
 .pratinjau-logo img{height:52px;max-width:150px;object-fit:contain}
 .pratinjau-logo span{font-size:12px;color:var(--tinta-3)}
-.btn-rekam{flex:1;height:64px;border:none;border-radius:16px;background:var(--oranye);color:#fff;cursor:pointer;
+.aksi-bawah .ikon-btn.kotak{flex-shrink:0}
+/* Layar sempit (<=360px): rapatkan agar tombol Rekam Titik tetap lega */
+@media(max-width:360px){
+  .aksi-bawah{gap:6px}
+  .aksi-bawah .ikon-btn.kotak{width:48px;height:48px}
+}
+.btn-rekam{flex:1;min-width:0;height:64px;border:none;border-radius:16px;background:var(--oranye);color:#fff;cursor:pointer;
   box-shadow:0 6px 22px rgba(232,89,12,.42);display:flex;flex-direction:column;justify-content:center;gap:2px}
 .btn-rekam:active{transform:scale(.98)}
 .btn-rekam[disabled]{background:var(--tinta-3);box-shadow:none}
@@ -437,7 +455,7 @@ textarea.inp{min-height:72px;resize:vertical}
 
       <button id="btnLogin" class="btn btn-utama btn-lebar">Masuk</button>
       <p id="loginPesan" class="pesan-galat"></p>
-      <p class="jejak">Versi 3.0.1 · Data tersimpan di Google Sheets
+      <p class="jejak">Versi 3.1.0 · Data tersimpan di Google Sheets
         <span id="gantiApi" class="tersembunyi"> · <a href="#" id="lnkGantiApi">ganti server</a></span></p>
       </div>
     </div>
@@ -526,8 +544,7 @@ textarea.inp{min-height:72px;resize:vertical}
           <button id="btnZoomBidang" class="ikon-btn bulat" title="Zoom ke bidang yang diukur">⛶</button>
           <button id="btnKunci" class="ikon-btn bulat nyala" title="Kunci titik (cegah tergeser tidak sengaja)">🔒</button>
           <button id="btnAlat" class="ikon-btn bulat" title="Alat lainnya">⋯</button>
-          <!-- dijalankan lewat menu ⋯ / header; tetap di DOM agar penangan klik tidak berubah -->
-          <button id="btnFoto" class="ikon-btn bulat tersembunyi">📷</button>
+          <!-- dijalankan lewat menu ⋯; tetap di DOM agar penangan klik tidak berubah -->
           <!-- Tetap ada di DOM (penangan klik & status menyala tidak berubah),
                dijalankan lewat menu ⋯ -->
           <button id="btnKolab" class="ikon-btn bulat tersembunyi">👥</button>
@@ -549,6 +566,7 @@ textarea.inp{min-height:72px;resize:vertical}
             <span class="rekam-judul">Rekam Titik</span>
             <span id="rekamSub" class="rekam-sub">GPS siap</span>
           </button>
+          <button id="btnFoto" class="ikon-btn kotak" title="Foto patok">📷</button>
           <button id="btnAutoRekam" class="ikon-btn kotak" title="Rekam otomatis sambil berjalan">⏱</button>
         </div>
       </section>
@@ -593,6 +611,15 @@ textarea.inp{min-height:72px;resize:vertical}
   <input type="file" id="inputLogo" accept="image/*" class="tersembunyi">
   <input type="file" id="inputAvatar" accept="image/*" class="tersembunyi">
 
+  <!-- Lightbox: foto profil & foto lapangan bisa diperbesar (cubit untuk zoom) -->
+  <div id="lightbox" class="lightbox tersembunyi">
+    <button id="lbTutup" class="lb-tutup" aria-label="Tutup">✕</button>
+    <div id="lbBingkai" class="lb-bingkai">
+      <img id="lbGambar" alt="">
+    </div>
+    <div id="lbKeterangan" class="lb-keterangan"></div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
     /* ====================================================================
@@ -611,7 +638,7 @@ textarea.inp{min-height:72px;resize:vertical}
       toleransi_akurasi: 10,
       label_tiap: 5
     };
-    window.APP_VERSION = '3.0.1';
+    window.APP_VERSION = '3.1.0';
   </script>
 <script>
 /* ============================================================
@@ -2330,7 +2357,8 @@ function panelFoto() {
   var foto = (S.aktif.lampiran || []).filter(function (a) { return a.tipe === 'foto'; });
   var isi = foto.length
     ? '<div class="galeri">' + foto.map(function (a) {
-        return '<figure><img src="' + esc(a.url) + '" alt="' + esc(a.nama_file) + '">' +
+        return '<figure><img class="bisa-zoom" data-zoom="' + esc(a.url) + '" data-cap="' + esc(a.nama_file) + '" ' +
+          'src="' + esc(a.url) + '" alt="' + esc(a.nama_file) + '">' +
           (bisaTulis() ? '<button data-hapus="' + esc(a.lampiran_id) + '">&#10005;</button>' : '') + '</figure>';
       }).join('') + '</div>'
     : '<div class="kosong"><b>Belum ada foto</b>Ketuk ikon kamera di peta untuk memotret patok.</div>';
@@ -2339,6 +2367,10 @@ function panelFoto() {
     (bisaTulis() ? '<button class="btn btn-utama btn-lebar" id="fotoBaru">Ambil Foto</button>' : ''));
 
   if (bisaTulis()) $('fotoBaru').onclick = function () { tutupLembar(); $('inputFoto').click(); };
+
+  Array.prototype.forEach.call($('lembarIsi').querySelectorAll('[data-zoom]'), function (g) {
+    g.onclick = function () { bukaLightbox(g.dataset.zoom, g.dataset.cap); };
+  });
 
   Array.prototype.forEach.call($('lembarIsi').querySelectorAll('[data-hapus]'), function (b) {
     b.onclick = function (ev) {
@@ -2497,7 +2529,7 @@ function infoRekan(r) {
 
   bukaLembar('Rekan Surveyor',
     '<div class="profil">' +
-      '<div class="avatar" style="background:' + warnaDari(r.username) + '">' +
+      '<div class="avatar bisa-zoom" id="avatarRekan" style="background:' + warnaDari(r.username) + '">' +
       avatarHtml(r.username, r.nama) + '</div>' +
       '<div><b>' + esc(r.nama) + '</b>' +
       '<span>' + esc(r.username) + (a.role ? ' &middot; ' + esc(a.role) : '') + '</span></div>' +
@@ -2511,6 +2543,10 @@ function infoRekan(r) {
     '<tr><th>Koordinat</th><td class="num">' + r.lat.toFixed(6) + ', ' + r.lng.toFixed(6) + '</td></tr>' +
     '</table>' +
     '<div class="aksi-baris"><button class="btn" id="rZoom">Bawa peta ke rekan</button></div>');
+
+  $('avatarRekan').onclick = function () {
+    if (a.foto) bukaLightbox(a.foto, r.nama + (a.role ? ' · ' + a.role : ''));
+  };
 
   $('rZoom').onclick = function () {
     S.ikuti = false;
@@ -2813,6 +2849,96 @@ function perbaruiLencanaPesan() {
   l.classList.toggle('tersembunyi', total === 0);
 }
 
+/* ============================================================
+   LIGHTBOX FOTO — cubit untuk zoom, seret untuk geser, ketuk dua kali untuk zoom cepat.
+   Dipakai foto profil (sendiri & rekan) dan foto dokumentasi lapangan.
+   ============================================================ */
+var LB = { skala: 1, x: 0, y: 0, seret: false, mulaiX: 0, mulaiY: 0, jarakAwal: 0, skalaAwal: 1, ketukTerakhir: 0 };
+
+function bukaLightbox(src, keterangan) {
+  if (!src) return;
+  $('lbGambar').src = src;
+  $('lbKeterangan').textContent = keterangan || '';
+  LB.skala = 1; LB.x = 0; LB.y = 0;
+  terapkanLb();
+  $('lightbox').classList.remove('tersembunyi');
+}
+
+function tutupLightbox() {
+  $('lightbox').classList.add('tersembunyi');
+  $('lbGambar').src = '';
+}
+
+function terapkanLb() {
+  $('lbGambar').style.transform =
+    'translate(' + LB.x + 'px,' + LB.y + 'px) scale(' + LB.skala + ')';
+}
+
+function batasiLb() {
+  LB.skala = Math.min(6, Math.max(1, LB.skala));
+  if (LB.skala === 1) { LB.x = 0; LB.y = 0; }   // kembali ke tengah saat zoom penuh keluar
+}
+
+(function pasangLightbox() {
+  var bingkai = $('lbBingkai');
+  $('lbTutup').onclick = tutupLightbox;
+  $('lightbox').onclick = function (e) { if (e.target === $('lightbox')) tutupLightbox(); };
+
+  bingkai.addEventListener('touchstart', function (e) {
+    if (e.touches.length === 2) {
+      LB.jarakAwal = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY);
+      LB.skalaAwal = LB.skala;
+    } else if (e.touches.length === 1) {
+      LB.seret = true;
+      LB.mulaiX = e.touches[0].clientX - LB.x;
+      LB.mulaiY = e.touches[0].clientY - LB.y;
+
+      var kini = Date.now();
+      if (kini - LB.ketukTerakhir < 280) {          // ketuk dua kali
+        LB.skala = LB.skala > 1 ? 1 : 2.5;
+        batasiLb(); terapkanLb();
+      }
+      LB.ketukTerakhir = kini;
+    }
+  }, { passive: true });
+
+  bingkai.addEventListener('touchmove', function (e) {
+    if (e.touches.length === 2 && LB.jarakAwal) {
+      e.preventDefault();
+      var d = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY);
+      LB.skala = LB.skalaAwal * (d / LB.jarakAwal);
+      batasiLb(); terapkanLb();
+    } else if (LB.seret && e.touches.length === 1 && LB.skala > 1) {
+      e.preventDefault();
+      LB.x = e.touches[0].clientX - LB.mulaiX;
+      LB.y = e.touches[0].clientY - LB.mulaiY;
+      terapkanLb();
+    }
+  }, { passive: false });
+
+  bingkai.addEventListener('touchend', function () { LB.seret = false; LB.jarakAwal = 0; });
+
+  // Di komputer: gulir untuk zoom, klik-seret untuk geser
+  bingkai.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    LB.skala += e.deltaY < 0 ? 0.25 : -0.25;
+    batasiLb(); terapkanLb();
+  }, { passive: false });
+
+  bingkai.addEventListener('dblclick', function () {
+    LB.skala = LB.skala > 1 ? 1 : 2.5;
+    batasiLb(); terapkanLb();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !$('lightbox').classList.contains('tersembunyi')) tutupLightbox();
+  });
+})();
+
 /* ---------- TANDA TANGAN DIGITAL ---------- */
 var PERAN_TTD = [
   { kunci: 'surveyor', judul: 'Surveyor', jabatan: 'Surveyor' },
@@ -3026,7 +3152,7 @@ function gambarPengaturan() {
   var html =
     '<div class="kartu" style="cursor:default">' +
       '<div class="profil" style="margin-bottom:0">' +
-        '<div class="avatar" id="avatarSaya" style="background:' + warnaDari(p.username) + '">' +
+        '<div class="avatar bisa-zoom" id="avatarSaya" style="background:' + warnaDari(p.username) + '">' +
         avatarHtml(p.username, p.nama_lengkap) + '</div>' +
         '<div style="flex:1"><b>' + esc(p.nama_lengkap) + '</b>' +
         '<span>' + esc(p.username) + ' &middot; ' + esc(p.role) + '</span>' +
@@ -3073,6 +3199,11 @@ function gambarPengaturan() {
       })
       .catch(function () {});
   }
+
+  $('avatarSaya').onclick = function () {
+    var a = S.avatar[p.username];
+    if (a && a.foto) bukaLightbox(a.foto, p.nama_lengkap + ' · ' + p.role);
+  };
 
   $('btnFotoProfil').onclick = function () { $('inputAvatar').click(); };
   if ($('btnHapusFoto')) $('btnHapusFoto').onclick = function () {
