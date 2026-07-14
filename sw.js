@@ -69,6 +69,26 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // HALAMAN (navigasi): JARINGAN DULU, cache hanya sebagai cadangan saat offline.
+  //
+  // Sebelumnya halaman disajikan cache-first. Akibatnya, begitu index.html versi baru
+  // diunggah ke GitHub, pengguna TETAP melihat versi lama — kadang selamanya, karena
+  // cache tidak pernah punya alasan untuk melepasnya. Untuk aplikasi lapangan, jeda
+  // beberapa ratus milidetik jauh lebih murah daripada surveyor memakai versi usang.
+  if (req.mode === 'navigate' || (req.destination === 'document')) {
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          const salinan = res.clone();
+          caches.open(CANGKANG).then((c) => c.put('./index.html', salinan));
+          return res;
+        })
+        .catch(() => caches.match('./index.html'))   // offline: pakai simpanan terakhir
+    );
+    return;
+  }
+
+  // Aset lain (ikon, Leaflet, sql.js): cache dulu — isinya memang tidak berubah-ubah.
   e.respondWith(
     caches.match(req).then((hit) => hit || fetch(req).catch(() => caches.match('./index.html')))
   );
