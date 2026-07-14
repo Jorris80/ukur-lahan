@@ -57,6 +57,9 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
 .inp:focus{border-color:var(--oranye);box-shadow:0 0 0 3px rgba(232,89,12,.14)}
 .pesan-galat{color:var(--merah);font-size:13px;min-height:18px;margin:10px 0 0}
 .jejak{text-align:center;font-size:11px;color:var(--tinta-3);margin:14px 0 0}
+.jejak a{color:var(--oranye);text-decoration:none}
+.setup-teks{font-size:13px;color:var(--tinta-2);line-height:1.5;margin:0 0 4px}
+.setup-teks code{background:var(--kertas);padding:1px 4px;border-radius:4px;font-size:12px}
 
 /* ---------- TOMBOL ---------- */
 .btn{border:1.5px solid var(--garis);background:var(--putih);color:var(--tinta);
@@ -203,6 +206,37 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
   background:rgba(20,24,31,.84);color:#fff;font-size:10.5px;padding:3px 7px;border-radius:7px;white-space:nowrap}
 .rekan.basi{opacity:.45}
 
+/* ---------- Obrolan tim ---------- */
+.lencana-pesan{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:999px;
+  background:var(--merah);color:#fff;font-size:10.5px;font-weight:800;display:grid;place-items:center;
+  padding:0 4px;border:2px solid #fff;font-family:var(--mono)}
+#btnObrolan{position:relative}
+
+.tab-ruang{display:flex;gap:6px;margin-bottom:10px}
+.tab-ruang button{flex:1;border:1.5px solid var(--garis);background:#fff;border-radius:10px;padding:8px 6px;
+  font-family:inherit;font-size:12.5px;color:var(--tinta-2);cursor:pointer;position:relative}
+.tab-ruang button.pilih{border-color:var(--oranye);background:#FFF6F0;color:var(--oranye);font-weight:700}
+.tab-ruang .titik-baru{position:absolute;top:5px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--merah)}
+
+.gulung-pesan{height:44vh;min-height:230px;overflow-y:auto;padding:4px 2px;background:var(--kertas);
+  border:1px solid var(--garis);border-radius:12px;display:flex;flex-direction:column;gap:8px}
+.bual{max-width:82%;padding:8px 11px;border-radius:14px;background:#fff;border:1px solid var(--garis);
+  align-self:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.bual.saya{align-self:flex-end;background:#FFF1E7;border-color:#F5D3BC}
+.bual .siapa{font-size:11px;font-weight:800;margin-bottom:2px}
+.bual .teks{font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.bual .jam{font-size:10px;color:var(--tinta-3);margin-top:3px;font-family:var(--mono)}
+.bual .lok{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:11.5px;color:var(--oranye);
+  background:#FFF6F0;border:1px solid #F5D3BC;border-radius:8px;padding:3px 7px;cursor:pointer}
+.pesan-kosong{margin:auto;text-align:center;color:var(--tinta-3);font-size:12.5px;padding:20px}
+
+.baris-kirim{display:flex;gap:8px;margin-top:10px;align-items:flex-end}
+.baris-kirim textarea{flex:1;resize:none;min-height:44px;max-height:110px;padding:11px 12px;border:1.5px solid var(--garis);
+  border-radius:12px;font-family:inherit;font-size:14px;background:#fff}
+.baris-kirim button{flex-shrink:0;height:44px;width:44px;border-radius:12px;border:none;background:var(--oranye);
+  color:#fff;font-size:17px;cursor:pointer}
+.baris-kirim button.sekunder{background:#fff;border:1.5px solid var(--garis);color:var(--tinta-2)}
+
 /* Kartu rekan di lembar info */
 .profil{display:flex;align-items:center;gap:14px;margin-bottom:14px}
 .profil .avatar{width:64px;height:64px;border-radius:50%;overflow:hidden;flex-shrink:0;display:grid;place-items:center;
@@ -221,6 +255,8 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
   padding:6px 8px;text-align:center;flex-shrink:0;min-width:78px}
 .baris-konflik .kotak-luas b{display:block;font-family:var(--mono);font-size:13px}
 .baris-konflik .kotak-luas span{font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+
+
 
 .aksi-bawah{position:absolute;left:10px;right:10px;bottom:calc(12px + var(--aman-bawah));z-index:600;
   display:flex;align-items:center;gap:10px}
@@ -374,6 +410,19 @@ textarea.inp{min-height:72px;resize:vertical}
         </div>
       </div>
 
+      <!-- Tampil hanya di mode hosting statis (GitHub Pages) saat URL backend belum diisi -->
+      <div id="setupApi" class="tersembunyi">
+        <p class="setup-teks">Aplikasi ini belum tahu harus terhubung ke mana. Tempelkan
+          <b>URL Web App Apps Script</b> Anda (berakhiran <code>/exec</code>).</p>
+        <label class="lbl" for="inApi">URL Server</label>
+        <input id="inApi" class="inp" placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+               autocapitalize="none" spellcheck="false">
+        <button id="btnSimpanApi" class="btn btn-utama btn-lebar">Hubungkan</button>
+        <p id="apiPesan" class="pesan-galat"></p>
+        <p class="jejak">Cukup sekali. URL disimpan di perangkat ini.</p>
+      </div>
+
+      <div id="formLogin">
       <label class="lbl" for="inUser">Username</label>
       <input id="inUser" class="inp" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="mis. surveyor1">
 
@@ -382,7 +431,9 @@ textarea.inp{min-height:72px;resize:vertical}
 
       <button id="btnLogin" class="btn btn-utama btn-lebar">Masuk</button>
       <p id="loginPesan" class="pesan-galat"></p>
-      <p class="jejak">Versi 2.7.0 · Data tersimpan di Google Sheets</p>
+      <p class="jejak">Versi 3.0.0 · Data tersimpan di Google Sheets
+        <span id="gantiApi" class="tersembunyi"> · <a href="#" id="lnkGantiApi">ganti server</a></span></p>
+      </div>
     </div>
   </div>
 
@@ -462,6 +513,8 @@ textarea.inp{min-height:72px;resize:vertical}
         <div class="kendali-peta">
           <button id="btnBasemap" class="ikon-btn bulat" title="Ganti peta dasar">🗺️</button>
           <button id="btnIkuti" class="ikon-btn bulat" title="Ikuti posisi saya">🎯</button>
+          <button id="btnZoomBidang" class="ikon-btn bulat" title="Zoom ke bidang yang diukur">⛶</button>
+          <button id="btnObrolan" class="ikon-btn bulat" title="Obrolan tim">💬<span id="lencanaPesan" class="lencana-pesan tersembunyi">0</span></button>
           <button id="btnKunci" class="ikon-btn bulat nyala" title="Kunci titik (cegah tergeser tidak sengaja)">🔒</button>
           <button id="btnFoto" class="ikon-btn bulat" title="Foto patok">📷</button>
           <button id="btnAlat" class="ikon-btn bulat" title="Alat lainnya">⋯</button>
@@ -536,7 +589,7 @@ textarea.inp{min-height:72px;resize:vertical}
        ISI BAGIAN INI SEBELUM MENGUNGGAH KE GITHUB
        GAS_API_URL = URL deployment Web App Apps Script Anda (akhiran /exec).
        ==================================================================== */
-    window.GAS_API_URL = 'https://script.google.com/macros/s/AKfycbztO_q1zWPfmM7W84zK66Or6pXt_fEV_lvLEjeVqiTq58VZ2Tx7vWUIe2eaIDJp2R83cQ/exec'; // contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
+    window.GAS_API_URL = ''; // contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
 
     window.BOOT = {
       app_name: 'GeoUkur GPS',
@@ -548,7 +601,7 @@ textarea.inp{min-height:72px;resize:vertical}
       toleransi_akurasi: 10,
       label_tiap: 5
     };
-    window.APP_VERSION = '2.7.0';
+    window.APP_VERSION = '3.0.0';
   </script>
 <script>
 /* ============================================================
@@ -587,6 +640,14 @@ var S = {
   avatar: JSON.parse(localStorage.getItem('gu_avatar') || '{}'), // username -> {foto, nama, role}
   konflik: [],
   timerDenyut: null,
+
+  // Obrolan
+  ruangAktif: 'umum',
+  pesan: { umum: [], lahan: [] },
+  dibaca: JSON.parse(localStorage.getItem('gu_dibaca') || '{}'),  // ruang -> waktu pesan terakhir dibaca
+  baruUmum: 0,
+  baruLahan: 0,
+  timerObrolan: null,
   autoRekam: false,
   autoJarak: 10,
   titikAutoTerakhir: null,
@@ -619,10 +680,22 @@ function uid(p) { return (p || 'id') + '_' + Date.now().toString(36) + Math.rand
    - Di hosting statis (GitHub Pages)  -> fetch ke doPost GAS.
      Content-Type sengaja text/plain supaya tidak kena CORS preflight.
    ============================================================ */
+/**
+ * URL backend, berurutan: yang ditanam di berkas -> yang disimpan pengguna di perangkat.
+ * Mode HtmlService tidak butuh keduanya (memakai google.script.run).
+ */
+function urlApi() {
+  return window.GAS_API_URL || localStorage.getItem('gu_api') || '';
+}
+function modeStatis() {
+  return !(window.google && window.google.script && window.google.script.run);
+}
+
 function panggilGas(req) {
   return new Promise(function (resolve, reject) {
-    if (window.GAS_API_URL) {
-      fetch(window.GAS_API_URL, {
+    var url = urlApi();
+    if (url) {
+      fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(req),
@@ -633,15 +706,34 @@ function panggilGas(req) {
         .catch(function (e) { reject(new Error('Gagal menghubungi server: ' + e.message)); });
       return;
     }
-    if (window.google && google.script && google.script.run) {
+    if (!modeStatis()) {
       google.script.run
         .withSuccessHandler(resolve)
         .withFailureHandler(function (e) { reject(new Error(e.message || 'Gagal menghubungi server.')); })
         .api(req);
       return;
     }
-    reject(new Error('Backend belum dikonfigurasi. Isi window.GAS_API_URL di bagian atas index.html.'));
+    reject(new Error('URL server belum diisi.'));
   });
+}
+
+/** Nama perangkat sederhana untuk ditampilkan saat sesi bentrok ("HP Android", "iPhone", ...). */
+function namaPerangkat() {
+  var ua = navigator.userAgent || '';
+  var jenis =
+    /iPad/i.test(ua) ? 'iPad' :
+    /iPhone/i.test(ua) ? 'iPhone' :
+    /Android/i.test(ua) ? 'HP Android' :
+    /Windows/i.test(ua) ? 'Komputer Windows' :
+    /Macintosh/i.test(ua) ? 'Mac' :
+    /Linux/i.test(ua) ? 'Komputer Linux' : 'Perangkat';
+  var peramban =
+    /Edg\//i.test(ua) ? 'Edge' :
+    /OPR\//i.test(ua) ? 'Opera' :
+    /Chrome\//i.test(ua) ? 'Chrome' :
+    /Firefox\//i.test(ua) ? 'Firefox' :
+    /Safari\//i.test(ua) ? 'Safari' : 'peramban';
+  return jenis + ' · ' + peramban;
 }
 
 /* ---------- API ---------- */
@@ -650,7 +742,18 @@ function api(action, payload) {
     .then(function (res) {
       if (res && res.ok) return res.data;
       var pesan = (res && res.error) || 'Kesalahan tidak diketahui.';
-      if (/Sesi (habis|tidak valid)/i.test(pesan)) keluar(true);
+      if (/Sesi (habis|tidak valid)/i.test(pesan)) keluar(true, true);
+
+      // Akun dipakai login di perangkat lain -> sesi di sini sudah digusur server
+      if (pesan.indexOf('[SESI-LAIN]') === 0) {
+        keluar(true, true);
+        setTimeout(function () {
+          alert('Anda dikeluarkan otomatis.\n\nAkun ini baru saja dipakai login di perangkat lain. ' +
+                'Satu akun hanya bisa aktif di satu perangkat.');
+        }, 200);
+        throw new Error('Akun dipakai di perangkat lain.');
+      }
+
       throw new Error(pesan);
     });
 }
@@ -844,7 +947,10 @@ function masuk() {
   tunggu(true, 'Memeriksa akun...');
   $('loginPesan').textContent = '';
 
-  panggilGas({ action: 'login', payload: { username: u, password: p } })
+  panggilGas({
+    action: 'login',
+    payload: { username: u, password: p, perangkat: namaPerangkat(), device_id: S.deviceId }
+  })
     .then(function (r) {
       if (!r || !r.ok) throw new Error((r && r.error) || 'Gagal masuk.');
       return r.data;
@@ -856,18 +962,34 @@ function masuk() {
       localStorage.setItem('gu_config', JSON.stringify(d.config));
       mulaiAplikasi();
     })
-    .catch(function (e) { $('loginPesan').textContent = e.message; })
+    .catch(function (e) {
+      if (String(e.message).indexOf('[SESI-AKTIF]') === 0) {
+        var pesan = e.message.replace('[SESI-AKTIF] ', '');
+        $('loginPesan').textContent = 'Akun sedang aktif di perangkat lain.';
+        alert(pesan);
+        return;
+      }
+      $('loginPesan').textContent = e.message;
+    })
     .then(function () { tunggu(false); });
 }
 
-function keluar(paksa) {
+function keluar(paksa, tanpaLapor) {
   if (!paksa && S.antrean.length &&
       !confirm('Masih ada ' + S.antrean.length + ' perubahan yang belum tersinkron. Tetap keluar?')) return;
+
+  // Lepaskan pendaftaran sesi di server, kalau tidak perangkat lain harus menunggu
+  // sesi ini menganggur sekian menit sebelum bisa login.
+  if (!tanpaLapor && S.token && navigator.onLine) {
+    api('keluarSesi', {}).catch(function () {});
+  }
+
   localStorage.removeItem('gu_token');
   localStorage.removeItem('gu_pengguna');
   S.token = ''; S.pengguna = null;
   if (S.watchId !== null) { navigator.geolocation.clearWatch(S.watchId); S.watchId = null; }
   hentikanDenyut(true);
+  clearInterval(S.timerObrolan);
   $('aplikasi').classList.add('tersembunyi');
   $('layarLogin').classList.remove('tersembunyi');
 }
@@ -1033,13 +1155,16 @@ function bukaLahan(id, tetapDiHalaman) {
       S.aktif = d;
       localStorage.setItem('gu_cache_' + id, JSON.stringify(d));
       siapkanPeta();
-      gambarPeta(true);
+      gambarPeta(false);
       pindah(tetapDiHalaman ? halamanAktif : 'Peta');
+      // Peta baru punya ukuran nyata setelah halamannya tampil — zoom dilakukan sesudahnya.
+      if (!tetapDiHalaman) setTimeout(function () { zoomKeBidang(true); }, 140);
     })
     .catch(function (e) {
       var cache = JSON.parse(localStorage.getItem('gu_cache_' + id) || 'null');
       if (cache) {
-        S.aktif = cache; siapkanPeta(); gambarPeta(true); pindah('Peta');
+        S.aktif = cache; siapkanPeta(); gambarPeta(false); pindah('Peta');
+        setTimeout(function () { zoomKeBidang(true); }, 140);
         toast('Mode offline: menampilkan data tersimpan.');
       } else toast(e.message, 'galat');
     })
@@ -1400,14 +1525,40 @@ function gambarPeta(paskan) {
   perbaruiPapan();
   if (S.kolaborasi && S.lapisTetangga) gambarTetangga();
 
-  if (paskan && T.length) {
-    try {
-      S.ikuti = false;
-      $('btnIkuti').classList.remove('nyala');
-      S.peta.fitBounds(L.latLngBounds(T.map(function (t) { return [t.lat, t.lng]; })).pad(0.3));
-    } catch (e) {}
-  }
+  if (paskan && T.length) zoomKeBidang(true);
 }
+
+/**
+ * Bawa peta ke seluruh bidang yang sedang diukur.
+ *
+ * invalidateSize() dipanggil lebih dulu dan ini bukan basa-basi: kalau fitBounds
+ * dijalankan saat kontainer peta masih tersembunyi (mis. tepat setelah membuka lahan
+ * dari Beranda), Leaflet menghitungnya pada kotak berukuran nol dan hasil zoom-nya
+ * meleset jauh. Itu sebabnya "buka lahan lalu peta tidak pas ke bidangnya".
+ */
+function zoomKeBidang(diam) {
+  if (!S.peta || !S.aktif) return;
+  var T = S.aktif.titik || [];
+  if (!T.length) { if (!diam) toast('Bidang ini belum punya titik.', 'galat'); return; }
+
+  S.ikuti = false;
+  $('btnIkuti').classList.remove('nyala');
+
+  try {
+    S.peta.invalidateSize();
+    if (T.length === 1) {
+      S.peta.setView([T[0].lat, T[0].lng], 19);
+    } else {
+      S.peta.fitBounds(
+        L.latLngBounds(T.map(function (t) { return [t.lat, t.lng]; })).pad(0.25),
+        { maxZoom: 19, animate: !diam }
+      );
+    }
+    if (!diam) toast('Peta diarahkan ke bidang: ' + esc(S.aktif.lahan.nama));
+  } catch (e) { /* bidang tanpa koordinat sah */ }
+}
+
+$('btnZoomBidang').onclick = function () { zoomKeBidang(false); };
 
 /**
  * Titik yang tergeser tidak pernah langsung tersimpan.
@@ -1755,6 +1906,7 @@ $('btnAlat').onclick = function () {
     ['&#128196;', 'Cetak berita acara', 'PDF lengkap dengan sketsa & tabel koordinat', 'pdf'],
     ['&#128247;', 'Dokumentasi foto', (S.aktif.lampiran || []).length + ' foto tersimpan', 'foto'],
     ['&#9997;', 'Tanda tangan digital', (S.aktif.ttd || []).length + ' dari 3 pihak sudah menandatangani', 'ttd'],
+    ['&#9974;', 'Zoom ke bidang', 'Bawa peta ke seluruh titik bidang ini', 'zoombidang'],
     ['&#9888;', 'Periksa tumpang tindih', S.konflik.length ? S.konflik.length + ' bidang bertindihan' : 'Bandingkan dengan bidang surveyor lain', 'tumpang'],
     ['&#128101;', S.kolaborasi ? 'Matikan kolaborasi' : 'Nyalakan kolaborasi',
      S.kolaborasi ? 'Rekan & bidang sekitar sedang tampil di peta' : 'Tampilkan rekan surveyor & bidang sekitar', 'kolab'],
@@ -1789,6 +1941,7 @@ function jalankanAlat(aksi) {
   if (aksi === 'foto') return panelFoto();
   if (aksi === 'ttd') return panelTtd();
   if (aksi === 'kunci') { tutupLembar(); $('btnKunci').click(); return; }
+  if (aksi === 'zoombidang') { tutupLembar(); zoomKeBidang(false); return; }
   if (aksi === 'tumpang') return panelTumpang();
   if (aksi === 'kolab') { tutupLembar(); $('btnKolab').click(); return; }
   if (aksi === 'tap') { tutupLembar(); $('btnModeTap').click(); return; }
@@ -2254,10 +2407,16 @@ function denyut() {
     berbagi: S.berbagiLokasi,
     lat: c ? c.latitude : '',
     lng: c ? c.longitude : '',
-    akurasi: c ? c.accuracy : ''
+    akurasi: c ? c.accuracy : '',
+    pesan_sejak: { umum: S.dibaca['umum'] || '', lahan: S.dibaca[ruangLahan()] || '' }
   })
     .then(function (d) {
       gambarRekan(d.rekan || []);
+      if (d.pesan_baru) {
+        S.baruUmum = d.pesan_baru.umum || 0;
+        S.baruLahan = d.pesan_baru.lahan || 0;
+        perbaruiLencanaPesan();
+      }
       return segarkanTetangga(d.tetangga || []);
     })
     .catch(function (e) { /* denyut gagal itu wajar di lapangan — coba lagi 10 detik lagi */ });
@@ -2479,6 +2638,169 @@ function panelTumpang() {
     .then(function () { tunggu(false); });
 }
 
+/* ============================================================
+   OBROLAN TIM
+   Polling, bukan koneksi langsung — Apps Script tidak punya WebSocket.
+   Saat panel obrolan terbuka: tarik pesan baru tiap 5 detik.
+   Saat tertutup: hitungan pesan baru ikut menumpang denyut kolaborasi (10 detik),
+   jadi tidak ada permintaan tambahan hanya untuk lencana.
+   ============================================================ */
+var JEDA_OBROLAN = 5000;
+
+function ruangLahan() {
+  return S.aktif ? 'lahan:' + S.aktif.lahan.lahan_id : '';
+}
+function namaRuang(kunci) {
+  return kunci === 'umum' ? 'umum' : ruangLahan();
+}
+function jam(iso) {
+  var d = new Date(iso);
+  return isNaN(d.getTime()) ? '' :
+    ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+}
+
+$('btnObrolan').onclick = function () { panelObrolan(S.baruLahan && S.aktif ? 'lahan' : 'umum'); };
+
+function panelObrolan(ruang) {
+  S.ruangAktif = ruang || 'umum';
+  if (S.ruangAktif === 'lahan' && !S.aktif) S.ruangAktif = 'umum';
+
+  bukaLembar('Obrolan Tim',
+    '<div class="tab-ruang" id="tabRuang">' +
+      '<button data-r="umum" class="' + (S.ruangAktif === 'umum' ? 'pilih' : '') + '">Tim (umum)' +
+        (S.baruUmum ? '<span class="titik-baru"></span>' : '') + '</button>' +
+      (S.aktif
+        ? '<button data-r="lahan" class="' + (S.ruangAktif === 'lahan' ? 'pilih' : '') + '">' +
+          esc(S.aktif.lahan.nama) + (S.baruLahan ? '<span class="titik-baru"></span>' : '') + '</button>'
+        : '') +
+    '</div>' +
+    '<div class="gulung-pesan" id="gulungPesan"><div class="pesan-kosong">Memuat...</div></div>' +
+    '<div class="baris-kirim">' +
+      '<button class="sekunder" id="pKirimLokasi" title="Sisipkan lokasi saya">&#128205;</button>' +
+      '<textarea id="pIsi" placeholder="Tulis pesan..." rows="1"></textarea>' +
+      '<button id="pKirim" title="Kirim">&#10148;</button>' +
+    '</div>' +
+    '<p class="jejak" style="text-align:left">Pesan tersimpan di sheet <b>Pesan</b>. ' +
+    'Ketuk 📍 untuk melampirkan koordinat Anda — rekan bisa langsung membawanya ke peta.</p>');
+
+  Array.prototype.forEach.call($('tabRuang').children, function (b) {
+    b.onclick = function () { panelObrolan(b.dataset.r); };
+  });
+
+  var lampirLokasi = false;
+  $('pKirimLokasi').onclick = function () {
+    if (!S.posisi) { toast('Posisi GPS belum tersedia.', 'galat'); return; }
+    lampirLokasi = !lampirLokasi;
+    $('pKirimLokasi').classList.toggle('sekunder', !lampirLokasi);
+    toast(lampirLokasi ? 'Lokasi akan ikut terkirim.' : 'Lokasi tidak jadi dikirim.');
+  };
+
+  $('pIsi').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); kirim(); }
+  });
+  $('pKirim').onclick = kirim;
+
+  function kirim() {
+    var isi = $('pIsi').value.trim();
+    if (!isi) return;
+    var c = (lampirLokasi && S.posisi) ? S.posisi.coords : null;
+
+    $('pIsi').value = '';
+    api('kirimPesan', {
+      ruang: namaRuang(S.ruangAktif),
+      isi: isi,
+      lat: c ? c.latitude : '',
+      lng: c ? c.longitude : ''
+    })
+      .then(function () {
+        lampirLokasi = false;
+        $('pKirimLokasi').classList.add('sekunder');
+        return tarikPesan(true);
+      })
+      .catch(function (e) {
+        $('pIsi').value = isi;   // jangan buang ketikan orang kalau gagal kirim
+        toast(e.message, 'galat');
+      });
+  }
+
+  tarikPesan(true);
+  clearInterval(S.timerObrolan);
+  S.timerObrolan = setInterval(function () {
+    if ($('lembar').classList.contains('tersembunyi')) { clearInterval(S.timerObrolan); return; }
+    tarikPesan(false);
+  }, JEDA_OBROLAN);
+}
+
+function tarikPesan(gulungKeBawah) {
+  var kunci = S.ruangAktif;
+  var daftar = S.pesan[kunci] || [];
+  var terakhir = daftar.length ? daftar[daftar.length - 1].waktu : '';
+
+  return api('ambilPesan', { ruang: namaRuang(kunci), sejak: terakhir })
+    .then(function (d) {
+      if (d.pesan.length) {
+        S.pesan[kunci] = daftar.concat(d.pesan);
+        gulungKeBawah = true;
+      }
+      // ruang ini sedang dibuka -> anggap sudah terbaca
+      var isi = S.pesan[kunci];
+      if (isi.length) {
+        S.dibaca[namaRuang(kunci)] = isi[isi.length - 1].waktu;
+        localStorage.setItem('gu_dibaca', JSON.stringify(S.dibaca));
+      }
+      if (kunci === 'umum') S.baruUmum = 0; else S.baruLahan = 0;
+      perbaruiLencanaPesan();
+      gambarPesan(gulungKeBawah);
+    })
+    .catch(function () { /* offline: biarkan pesan lama tetap tampil */ });
+}
+
+function gambarPesan(gulungKeBawah) {
+  var w = $('gulungPesan');
+  if (!w) return;
+  var daftar = S.pesan[S.ruangAktif] || [];
+
+  if (!daftar.length) {
+    w.innerHTML = '<div class="pesan-kosong">Belum ada pesan di ruang ini.<br>Mulai obrolan dengan tim Anda.</div>';
+    return;
+  }
+
+  w.innerHTML = daftar.map(function (m) {
+    return '<div class="bual' + (m.saya ? ' saya' : '') + '">' +
+      (m.saya ? '' : '<div class="siapa" style="color:' + warnaDari(m.username) + '">' + esc(m.nama) + '</div>') +
+      '<div class="teks">' + esc(m.isi) + '</div>' +
+      (m.lat !== null && m.lng !== null
+        ? '<div class="lok" data-lat="' + m.lat + '" data-lng="' + m.lng + '">📍 ' +
+          m.lat.toFixed(5) + ', ' + m.lng.toFixed(5) + ' — lihat di peta</div>'
+        : '') +
+      '<div class="jam">' + jam(m.waktu) + '</div>' +
+      '</div>';
+  }).join('');
+
+  Array.prototype.forEach.call(w.querySelectorAll('.lok'), function (el) {
+    el.onclick = function () {
+      var lat = parseFloat(el.dataset.lat), lng = parseFloat(el.dataset.lng);
+      tutupLembar();
+      pindah('Peta');
+      setTimeout(function () {
+        S.ikuti = false;
+        $('btnIkuti').classList.remove('nyala');
+        S.peta.setView([lat, lng], 19);
+        L.popup().setLatLng([lat, lng]).setContent('Lokasi dari obrolan').openOn(S.peta);
+      }, 160);
+    };
+  });
+
+  if (gulungKeBawah) w.scrollTop = w.scrollHeight;
+}
+
+function perbaruiLencanaPesan() {
+  var total = (S.baruUmum || 0) + (S.baruLahan || 0);
+  var l = $('lencanaPesan');
+  l.textContent = total > 9 ? '9+' : String(total);
+  l.classList.toggle('tersembunyi', total === 0);
+}
+
 /* ---------- TANDA TANGAN DIGITAL ---------- */
 var PERAN_TTD = [
   { kunci: 'surveyor', judul: 'Surveyor', jabatan: 'Surveyor' },
@@ -2646,6 +2968,47 @@ function waktuSingkat(iso) {
 }
 
 /* ---------- PENGATURAN ---------- */
+/* ---------- ADMIN: PERANGKAT YANG SEDANG LOGIN ---------- */
+function panelSesi() {
+  tunggu(true, 'Memuat sesi aktif...');
+  api('sesiAktif', {})
+    .then(function (d) {
+      var isi = d.length
+        ? d.map(function (s) {
+            return '<div class="baris-bayar" data-u="' + esc(s.username) + '">' +
+              '<div class="kode" style="background:' + warnaDari(s.username) + '">' +
+              esc(inisial(s.nama_lengkap)) + '</div>' +
+              '<div class="isi"><b style="font-family:var(--dasar)">' + esc(s.nama_lengkap) + '</b>' +
+              '<span>' + esc(s.perangkat) + '<br>' +
+              (s.menganggur_menit < 2 ? 'sedang aktif' : 'menganggur ' + s.menganggur_menit + ' menit') +
+              (s.ditinggalkan ? ' &middot; sesi sudah bisa digusur sendiri' : '') +
+              '</span></div>' +
+              '<button class="btn btn-kecil btn-bahaya" data-putus="' + esc(s.username) + '">Putuskan</button>' +
+              '</div>';
+          }).join('')
+        : '<div class="kosong"><b>Tidak ada yang sedang login</b>Semua akun sedang keluar dari aplikasi.</div>';
+
+      bukaLembar('Perangkat Aktif', isi +
+        '<p class="jejak" style="text-align:left">Satu akun hanya bisa aktif di satu perangkat. ' +
+        'Pakai <b>Putuskan</b> kalau perangkat pengguna hilang atau rusak sehingga tidak bisa keluar sendiri — ' +
+        'setelah itu ia bisa login lagi di perangkat baru.</p>');
+
+      Array.prototype.forEach.call($('lembarIsi').querySelectorAll('[data-putus]'), function (b) {
+        b.onclick = function (ev) {
+          ev.stopPropagation();
+          if (!confirm('Putuskan sesi ' + b.dataset.putus + '? Pengguna itu akan keluar otomatis.')) return;
+          tunggu(true, 'Memutus sesi...');
+          api('paksaKeluar', { username: b.dataset.putus })
+            .then(function (r) { toast('Sesi ' + r.username + ' di ' + r.perangkat + ' diputus.', 'sukses'); panelSesi(); })
+            .catch(function (e) { toast(e.message, 'galat'); })
+            .then(function () { tunggu(false); });
+        };
+      });
+    })
+    .catch(function (e) { toast(e.message, 'galat'); })
+    .then(function () { tunggu(false); });
+}
+
 function gambarPengaturan() {
   var p = S.pengguna;
   var html =
@@ -2660,7 +3023,16 @@ function gambarPengaturan() {
           ? '<button class="btn btn-kecil btn-bahaya" id="btnHapusFoto" style="margin-top:6px">Hapus</button>' : '') +
         '</div>' +
       '</div>' +
+
+      '<div class="grup" style="margin:14px 0 0">' +
+        '<label class="lbl" for="inWa">Nomor WhatsApp</label>' +
+        '<input id="inWa" class="inp" type="tel" inputmode="numeric" placeholder="081234567890" ' +
+          'value="' + esc((p.wa || '')) + '">' +
+        '<small style="color:var(--tinta-3);font-size:11.5px">Dipakai untuk notifikasi WhatsApp dari sistem.</small>' +
+        '<button class="btn btn-kecil" id="btnSimpanWa" style="margin-top:8px">Simpan nomor</button>' +
+      '</div>' +
     '</div>' +
+
 
     '<div class="menu-daftar" style="margin-top:14px;background:#fff;border:1px solid var(--garis);border-radius:14px;padding:0 12px">' +
     '<button class="menu-item" id="mSandi"><span class="em">&#128273;</span><span><b>Ganti password</b><small>Ubah kata sandi akun ini</small></span></button>' +
@@ -2669,6 +3041,8 @@ function gambarPengaturan() {
       : '') +
     (p.role === 'admin'
       ? '<button class="menu-item" id="mPengguna"><span class="em">&#128101;</span><span><b>Kelola pengguna</b><small>Tambah surveyor, atur peran</small></span></button>' +
+        '<button class="menu-item" id="mBersihPesan"><span class="em">&#129529;</span><span><b>Bersihkan obrolan lama</b><small>Hapus pesan lebih tua dari 30 hari</small></span></button>' +
+        '<button class="menu-item" id="mSesi"><span class="em">&#128241;</span><span><b>Perangkat aktif</b><small>Lihat siapa sedang login, putuskan bila perlu</small></span></button>' +
         '<button class="menu-item" id="mKonfig"><span class="em">&#9881;</span><span><b>Pengaturan aplikasi</b><small>Nama instansi, toleransi GPS, WhatsApp</small></span></button>'
       : '') +
     '<button class="menu-item" id="mKeluar"><span class="em">&#8617;</span><span><b>Keluar</b><small>Akhiri sesi di perangkat ini</small></span></button>' +
@@ -2700,6 +3074,33 @@ function gambarPengaturan() {
       })
       .catch(function (e) { toast(e.message, 'galat'); });
   };
+
+  $('btnSimpanWa').onclick = function () {
+    var wa = $('inWa').value.trim();
+    tunggu(true, 'Menyimpan nomor...');
+    api('simpanWa', { wa: wa })
+      .then(function (d) {
+        S.pengguna.wa = d.wa;
+        localStorage.setItem('gu_user', JSON.stringify(S.pengguna));
+        toast(d.wa ? 'Nomor WhatsApp tersimpan: ' + d.wa : 'Nomor WhatsApp dihapus.', 'sukses');
+      })
+      .catch(function (e) { toast(e.message, 'galat'); })
+      .then(function () { tunggu(false); });
+  };
+
+  if ($('mBersihPesan')) $('mBersihPesan').onclick = function () {
+    if (!confirm('Hapus semua pesan obrolan yang lebih tua dari 30 hari?')) return;
+    tunggu(true, 'Membersihkan obrolan...');
+    api('bersihkanPesan', { hari: 30 })
+      .then(function (d) {
+        S.pesan = { umum: [], lahan: [] };
+        toast(d.dihapus + ' pesan lama dihapus.', 'sukses');
+      })
+      .catch(function (e) { toast(e.message, 'galat'); })
+      .then(function () { tunggu(false); });
+  };
+
+  if ($('mSesi')) $('mSesi').onclick = panelSesi;
 
   $('mSandi').onclick = formGantiSandi;
   $('mKeluar').onclick = function () { keluar(false); };
@@ -2930,9 +3331,66 @@ function mulaiAplikasi() {
   pindah('Beranda');
 }
 
+/* ---------- SETUP URL SERVER (khusus hosting statis) ---------- */
+function tampilkanSetupApi(tampil) {
+  $('setupApi').classList.toggle('tersembunyi', !tampil);
+  $('formLogin').classList.toggle('tersembunyi', tampil);
+}
+
+$('btnSimpanApi').onclick = function () {
+  var url = $('inApi').value.trim();
+  var pesan = $('apiPesan');
+
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) {
+    pesan.textContent = 'URL harus berbentuk https://script.google.com/macros/s/…/exec ' +
+                        '(dari Deploy → Manage deployments, salin Web app URL).';
+    return;
+  }
+
+  pesan.textContent = '';
+  tunggu(true, 'Menghubungi server...');
+
+  // uji dulu: kalau URL salah atau akses deployment bukan "Anyone", ketahuan sekarang
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'info' }),
+    redirect: 'follow'
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (!res || !res.ok) throw new Error((res && res.error) || 'Server membalas hal yang tidak dikenali.');
+      localStorage.setItem('gu_api', url);
+      if (res.data && res.data.config) {
+        S.config = res.data.config;
+        localStorage.setItem('gu_config', JSON.stringify(res.data.config));
+        $('merekNama').textContent = S.config.app_name || 'GeoUkur GPS';
+        $('merekInstansi').textContent = S.config.instansi || 'Sistem Pengukuran Lahan';
+      }
+      tampilkanSetupApi(false);
+      toast('Terhubung ke server. Silakan masuk.', 'sukses');
+    })
+    .catch(function (e) {
+      pesan.textContent = 'Gagal terhubung: ' + e.message +
+        ' — pastikan deployment memakai akses "Anyone" dan URL-nya benar.';
+    })
+    .then(function () { tunggu(false); });
+};
+
+$('lnkGantiApi').onclick = function (e) {
+  e.preventDefault();
+  $('inApi').value = urlApi();
+  tampilkanSetupApi(true);
+};
+
 (function boot() {
   $('merekNama').textContent = S.config.app_name || 'GeoUkur GPS';
   $('merekInstansi').textContent = S.config.instansi || 'Sistem Pengukuran Lahan';
+
+  if (modeStatis()) {
+    $('gantiApi').classList.remove('tersembunyi');
+    if (!urlApi()) { tampilkanSetupApi(true); return; }   // belum pernah diisi → minta URL dulu
+  }
   if (S.token && S.pengguna) mulaiAplikasi();
 })();
 
