@@ -5,7 +5,7 @@
  * - Ubin peta online di-cache saat lewat (stale-while-revalidate) sebagai pelengkap MBTiles.
  * - Panggilan API (POST) tidak pernah di-cache; itu urusan antrean offline di dalam aplikasi.
  */
-const VERSI = 'geoukur-v2.7.0';
+const VERSI = 'geoukur-v3.0.0';
 const CANGKANG = VERSI + '-cangkang';
 const UBIN = VERSI + '-ubin';
 const MAKS_UBIN = 600;
