@@ -181,7 +181,7 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
 .papan-sel.utama b{font-size:20px;color:var(--oranye)}
 .papan-sel i{font-style:normal;font-size:10px;color:var(--tinta-3);margin-left:2px}
 
-.peringatan-geo{position:absolute;top:74px;left:10px;right:10px;z-index:600;background:#FFF0EE;
+.peringatan-geo{position:absolute;top:74px;left:10px;right:74px;z-index:600;background:#FFF0EE;
   border:1px solid #F3C4BF;color:var(--merah);font-size:12px;padding:8px 10px;border-radius:10px}
 
 .kendali-peta{position:absolute;right:10px;top:92px;z-index:600;display:flex;flex-direction:column;gap:8px;
@@ -192,8 +192,10 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
 .kendali-peta > *{pointer-events:auto}
 
 /* Peringatan tumpang tindih — merah, di bawah peringatan geometri */
-.peringatan-tumpang{position:absolute;left:10px;right:10px;top:74px;z-index:601;background:var(--merah);color:#fff;
-  font-size:12.5px;padding:9px 11px;border-radius:10px;box-shadow:var(--bayang);cursor:pointer;font-weight:600}
+.peringatan-tumpang{position:absolute;left:10px;right:74px;top:74px;z-index:601;background:var(--merah);color:#fff;
+  font-size:12.5px;padding:9px 34px 9px 11px;border-radius:10px;box-shadow:var(--bayang);cursor:pointer;font-weight:600}
+.peringatan-tumpang .tutup-spanduk{position:absolute;top:4px;right:4px;width:26px;height:26px;border:none;
+  background:rgba(255,255,255,.2);color:#fff;border-radius:7px;font-size:14px;cursor:pointer;line-height:1}
 .peringatan-geo:not(.tersembunyi) ~ .peringatan-tumpang{top:118px}
 
 /* Penanda rekan surveyor.
@@ -409,7 +411,7 @@ textarea.inp{min-height:72px;resize:vertical}
 @media(min-width:640px){
   .bilah-status,.aksi-bawah{left:auto;right:76px;width:min(680px,calc(100% - 100px))}
   .papan-ukur{right:76px}
-  .peringatan-geo,.peringatan-tumpang{right:76px}
+  .peringatan-geo,.peringatan-tumpang{right:86px}
 }
 
 /* Layar lebar (tablet) */
@@ -455,7 +457,7 @@ textarea.inp{min-height:72px;resize:vertical}
 
       <button id="btnLogin" class="btn btn-utama btn-lebar">Masuk</button>
       <p id="loginPesan" class="pesan-galat"></p>
-      <p class="jejak">Versi 3.1.0 · Data tersimpan di Google Sheets
+      <p class="jejak">Versi 3.1.1 · Data tersimpan di Google Sheets
         <span id="gantiApi" class="tersembunyi"> · <a href="#" id="lnkGantiApi">ganti server</a></span></p>
       </div>
     </div>
@@ -638,7 +640,7 @@ textarea.inp{min-height:72px;resize:vertical}
       toleransi_akurasi: 10,
       label_tiap: 5
     };
-    window.APP_VERSION = '3.1.0';
+    window.APP_VERSION = '3.1.1';
   </script>
 <script>
 /* ============================================================
@@ -676,6 +678,7 @@ var S = {
   cacheTetangga: {},   // lahan_id -> { versi, poly, info }
   avatar: JSON.parse(localStorage.getItem('gu_avatar') || '{}'), // username -> {foto, nama, role}
   konflik: [],
+  tumpangDitutup: '',
   timerDenyut: null,
 
   // Obrolan
@@ -1493,8 +1496,17 @@ function gambarPilihPeta() {
 function bisaTulis() { return S.pengguna && S.pengguna.role !== 'viewer'; }
 function bolehEdit() {
   if (!bisaTulis()) { toast('Peran "viewer" hanya bisa melihat dan mencetak.', 'galat'); return false; }
-  if (S.aktif && S.aktif.lahan.status === 'Selesai' && S.pengguna.role !== 'admin') {
-    toast('Lahan sudah Selesai. Ubah status dulu untuk mengedit.', 'galat');
+  if (!S.aktif) return true;
+  var st = S.aktif.lahan.status;
+
+  // Selesai: terkunci (kecuali admin). Dijeda: perekaman memang sengaja dihentikan —
+  // untuk melanjutkan, ubah dulu ke Aktif atau Draf.
+  if (st === 'Selesai' && S.pengguna.role !== 'admin') {
+    toast('Lahan sudah Selesai. Ubah status ke Aktif/Draf dulu untuk mengedit.', 'galat');
+    return false;
+  }
+  if (st === 'Dijeda') {
+    toast('Pengukuran sedang Dijeda. Ubah status ke Aktif atau Draf untuk merekam lagi.', 'galat');
     return false;
   }
   return true;
@@ -1675,8 +1687,17 @@ function mulaiGps() {
     S.posisi = pos;
     var c = pos.coords;
     $('bacaAkurasi').textContent = c.accuracy ? c.accuracy.toFixed(1) : '-';
-    if (!sedangMerekam) $('rekamSub').textContent = 'GPS ' + (c.accuracy || 0).toFixed(1) + ' m';
-    $('btnRekam').disabled = false;
+
+    // Rekam hanya saat Draf/Aktif. Jeda & Selesai menonaktifkan tombolnya, biar jelas.
+    var bolehRekam = S.aktif && ['Draf', 'Aktif'].indexOf(S.aktif.lahan.status) >= 0 && bisaTulis();
+    $('btnRekam').disabled = !bolehRekam;
+    $('btnAutoRekam').disabled = !bolehRekam;
+    if (!sedangMerekam) {
+      $('rekamSub').textContent = !bolehRekam
+        ? (S.aktif && S.aktif.lahan.status === 'Dijeda' ? 'Dijeda — ubah ke Aktif/Draf'
+           : S.aktif && S.aktif.lahan.status === 'Selesai' ? 'Selesai — terkunci' : 'GPS ' + (c.accuracy || 0).toFixed(1) + ' m')
+        : 'GPS ' + (c.accuracy || 0).toFixed(1) + ' m';
+    }
 
     if (!S.peta) return;
     var ll = [c.latitude, c.longitude];
@@ -1774,15 +1795,19 @@ function rekamGps(jumlahSampel) {
 }
 
 /* Rekam otomatis sambil berjalan menyusuri batas */
+/** Putus rekam otomatis. Dipakai tombol ⏱ dan saat status jadi Jeda/Selesai. */
+function matikanAutoRekam(diam) {
+  if (!S.autoRekam) return false;
+  S.autoRekam = false;
+  S.titikAutoTerakhir = null;
+  $('btnAutoRekam').classList.remove('nyala');
+  if (!diam) toast('Rekam otomatis dimatikan.');
+  return true;
+}
+
 $('btnAutoRekam').onclick = function () {
   if (!S.aktif || !bolehEdit()) return;
-  if (S.autoRekam) {
-    S.autoRekam = false;
-    S.titikAutoTerakhir = null;
-    $('btnAutoRekam').classList.remove('nyala');
-    toast('Rekam otomatis dimatikan.');
-    return;
-  }
+  if (S.autoRekam) { matikanAutoRekam(false); return; }
   var jrk = prompt('Rekam titik otomatis setiap berapa meter berjalan?', String(S.autoJarak));
   if (jrk === null) return;
   var n = parseFloat(jrk);
@@ -2028,8 +2053,19 @@ Array.prototype.forEach.call(document.querySelectorAll('#bilahStatus .chip'), fu
     var st = b.dataset.st;
     if (st === S.aktif.lahan.status) return;
     if (!bisaTulis()) { toast('Peran "viewer" hanya bisa melihat dan mencetak.', 'galat'); return; }
+
+    var sedangAuto = S.autoRekam ? '\n\nRekam titik otomatis akan dihentikan.' : '';
+
     if (st === 'Selesai' && !confirm('Tandai pengukuran "' + S.aktif.lahan.nama + '" sebagai SELESAI?\n' +
-        'Lahan akan terkunci untuk editor (butuh minimal 3 titik dan geometri bersih).')) return;
+        'Lahan akan terkunci untuk editor (butuh minimal 3 titik dan geometri bersih).' + sedangAuto)) return;
+
+    if (st === 'Dijeda' && !confirm('Jeda pengukuran "' + S.aktif.lahan.nama + '"?' +
+        '\nPerekaman titik dihentikan sementara. Ubah ke Aktif atau Draf untuk melanjutkan.' + sedangAuto)) return;
+
+    // Draf & Aktif tidak perlu konfirmasi — keduanya memang status "boleh merekam".
+    // Jeda/Selesai menghentikan segala aktivitas rekam, termasuk rekam otomatis.
+    if (st === 'Dijeda' || st === 'Selesai') matikanAutoRekam(true);
+
     ubahStatus(st, '');
   };
 });
@@ -2649,11 +2685,24 @@ function infoTetangga(c, tt) {
 function perbaruiPeringatanTumpang() {
   var p = $('peringatanTumpang');
   if (!S.konflik.length) { p.classList.add('tersembunyi'); return; }
+
+  // Sidik jari konflik saat ini; kalau pengguna menutup spanduk, jangan munculkan lagi
+  // untuk konflik yang sama persis (baru muncul lagi kalau tumpang tindihnya berubah).
+  var sidik = S.konflik.map(function (k) { return k.lahan_id + ':' + k.luas_m2; }).join('|');
+  if (S.tumpangDitutup === sidik) { p.classList.add('tersembunyi'); return; }
+
   var total = S.konflik.reduce(function (a, k) { return a + k.luas_m2; }, 0);
-  p.textContent = '⚠ Tumpang tindih dengan ' + S.konflik.length + ' bidang (±' +
-                  total.toFixed(0) + ' m²) — ketuk untuk rincian';
+  p.innerHTML = '⚠ Tumpang tindih dengan ' + S.konflik.length + ' bidang (±' +
+                total.toFixed(0) + ' m²) — ketuk untuk rincian' +
+                '<button class="tutup-spanduk" id="tutupTumpang" aria-label="Sembunyikan">✕</button>';
   p.classList.remove('tersembunyi');
   p.onclick = panelTumpang;
+  $('tutupTumpang').onclick = function (e) {
+    e.stopPropagation();
+    S.tumpangDitutup = sidik;
+    p.classList.add('tersembunyi');
+    toast('Peringatan disembunyikan. Cek lagi lewat ⋯ → Periksa tumpang tindih.');
+  };
 }
 
 /** Daftar konflik. Angka resmi diambil dari server agar konsisten bagi semua surveyor. */
