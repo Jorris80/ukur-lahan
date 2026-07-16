@@ -239,10 +239,11 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
 .inp-mini{flex:1;min-width:0;padding:7px 9px;border:1.5px solid var(--garis);border-radius:9px;background:#fff;
   font-family:inherit;font-size:13px}
 .inp-mini:disabled{opacity:.5}
-.label-overlay{background:rgba(255,255,255,.86);border:none;box-shadow:0 1px 3px rgba(0,0,0,.25);
-  border-radius:5px;padding:1px 5px;font-family:var(--dasar);font-size:11px;font-weight:700;color:#14181F;
-  white-space:nowrap}
-.label-overlay::before{display:none}
+.label-bungkus{position:relative;pointer-events:none}
+.label-teks{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;
+  background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.14);border-radius:5px;padding:1px 5px;
+  font-family:var(--dasar);font-size:11px;font-weight:700;color:#14181F;line-height:15px;
+  box-shadow:0 1px 2px rgba(0,0,0,.22)}
 .pin-atur-baris{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--garis)}
 .pin-atur-baris .em{font-size:19px;width:26px;text-align:center;flex-shrink:0}
 .pin-atur-baris .nama{flex:1;min-width:0}
@@ -485,7 +486,7 @@ textarea.inp{min-height:72px;resize:vertical}
 
       <button id="btnLogin" class="btn btn-utama btn-lebar">Masuk</button>
       <p id="loginPesan" class="pesan-galat"></p>
-      <p class="jejak">Versi 3.3.0 · Data tersimpan di Google Sheets
+      <p class="jejak">Versi 3.3.2 · Data tersimpan di Google Sheets
         <span id="gantiApi" class="tersembunyi"> · <a href="#" id="lnkGantiApi">ganti server</a></span></p>
       </div>
     </div>
@@ -672,7 +673,7 @@ textarea.inp{min-height:72px;resize:vertical}
       toleransi_akurasi: 10,
       label_tiap: 5
     };
-    window.APP_VERSION = '3.3.0';
+    window.APP_VERSION = '3.3.2';
   </script>
 <script>
 /* ============================================================
@@ -730,6 +731,7 @@ var S = {
   basemapKustom: JSON.parse(localStorage.getItem('gu_basemap_kustom') || '[]'), // {nama,url,jenis,maks}
   overlay: JSON.parse(localStorage.getItem('gu_overlay') || '[]'),  // {id,nama,jenis,data|url,warna,tampil}
   lapisOverlay: {},   // id -> layer Leaflet
+  lapisLabel: {},     // id -> layer group label permanen
   mbtiles: null,        // { db, nama, mime, minzoom, maxzoom, bounds }
   mbtilesDicoba: false
 };
@@ -1404,7 +1406,7 @@ function isiLapisan() {
           '</div>' +
           '<div class="ov-label">' +
             '<label class="ov-cek"><input type="checkbox" data-label="' + o.id + '"' + (o.label ? ' checked' : '') + '> Tampilkan label</label>' +
-            (kolom.length ? '<select class="inp-mini" data-kolom="' + o.id + '"' + (o.label ? '' : ' disabled') + '>' + opsiKolom + '</select>' : '') +
+            (kolom.length ? '<select class="inp-mini" data-kolom="' + o.id + '">' + opsiKolom + '</select>' : '') +
           '</div>' +
           '</div>';
       }).join('')
@@ -1427,7 +1429,7 @@ function pasangAksiLapisan() {
       var o = S.overlay.filter(function (x) { return x.id === b.dataset.toggle; })[0];
       o.tampil = !o.tampil;
       simpanOverlay();
-      pasangSatuOverlay(o);
+      pasangSatuOverlay(o);   // ikut mengurus label lewat perbaruiLabelOverlay di dalamnya
       gambarPilihPeta('lapisan');
     };
   });
@@ -1442,6 +1444,7 @@ function pasangAksiLapisan() {
       var o = S.overlay.filter(function (x) { return x.id === b.dataset.hapusOv; })[0];
       if (!confirm('Hapus lapisan "' + o.nama + '"?')) return;
       if (S.lapisOverlay[o.id]) { S.peta.removeLayer(S.lapisOverlay[o.id]); delete S.lapisOverlay[o.id]; }
+      buangLabelOverlay(o.id);
       S.overlay = S.overlay.filter(function (x) { return x.id !== o.id; });
       simpanOverlay();
       gambarPilihPeta('lapisan');
@@ -1630,6 +1633,7 @@ function tambahOverlayGeojson(nama, jenis, geojson) {
 
 function pasangSatuOverlay(item) {
   if (S.lapisOverlay[item.id]) { S.peta.removeLayer(S.lapisOverlay[item.id]); delete S.lapisOverlay[item.id]; }
+  buangLabelOverlay(item.id);
   if (!item.tampil || !S.peta) return;
 
   var lapis = L.geoJSON(item.geojson, {
@@ -1639,24 +1643,100 @@ function pasangSatuOverlay(item) {
     },
     onEachFeature: function (f, layer) {
       var teks = nilaiLabel(f, item.kolomLabel);
-      if (teks) {
-        layer.bindPopup(teks);
-        if (item.label) {
-          // Label permanen di tengah fitur; poligon/garis pakai tooltip melekat.
-          layer.bindTooltip(teks, {
-            permanent: true, direction: 'center', className: 'label-overlay', opacity: 1
-          });
-        }
-      }
+      if (teks) layer.bindPopup(teks);   // ketuk untuk lihat nilai — selalu ada
     }
   }).addTo(S.peta);
 
   S.lapisOverlay[item.id] = lapis;
+  if (item.label) perbaruiLabelOverlay(item);   // label permanen: layer terpisah
   if (S.lapisPoligon) S.lapisPoligon.bringToFront();
 }
 
+/**
+ * Label permanen ditaruh di LAYER TERSENDIRI (marker teks di titik tengah tiap fitur),
+ * bukan tooltip yang diikat ke poligon. Alasannya:
+ *  - lebih andal: tidak bergantung pada urutan bind-vs-add yang sempat menggagalkan label;
+ *  - bisa dinyala/matikan tanpa membangun ulang seluruh lapisan (210 fitur itu berat);
+ *  - untuk data padat, label hanya digambar mulai zoom tertentu supaya tidak bertumpuk
+ *    jadi gumpalan teks yang tak terbaca.
+ */
+var MAKS_LABEL_TAMPIL = 400;   // batas label yang digambar sekaligus (jaga performa)
+
+function buangLabelOverlay(id) {
+  if (S.lapisLabel && S.lapisLabel[id]) {
+    S.peta.removeLayer(S.lapisLabel[id]);
+    delete S.lapisLabel[id];
+  }
+}
+
+function pusatFitur(f) {
+  var g = f.geometry;
+  if (!g) return null;
+  var koords = [];
+  (function kumpul(a) {
+    if (typeof a[0] === 'number') { koords.push(a); return; }
+    a.forEach(kumpul);
+  })(g.coordinates);
+  if (!koords.length) return null;
+  var sx = 0, sy = 0;
+  koords.forEach(function (k) { sx += k[0]; sy += k[1]; });
+  return [sy / koords.length, sx / koords.length];   // [lat, lng]
+}
+
+/**
+ * Gambar label. Tidak ada lagi ambang zoom — label yang berada di dalam layar SELALU
+ * tampil, di zoom berapa pun. Untuk lapisan padat, hanya fitur yang tampak di layar yang
+ * digambar (diperbarui saat peta digeser/di-zoom), dengan batas MAKS_LABEL_TAMPIL agar
+ * tidak membebani peramban. Zoom in untuk memisahkan label yang bertumpuk.
+ */
+function perbaruiLabelOverlay(item) {
+  if (!S.lapisLabel) S.lapisLabel = {};
+  buangLabelOverlay(item.id);
+  if (!item.label || !item.tampil || !S.peta) return;
+
+  var fitur = item.geojson.features || [];
+  var padat = fitur.length > 60;
+  var batas = padat ? S.peta.getBounds().pad(0.2) : null;   // data padat: hanya yang tampak
+
+  var grup = L.layerGroup();
+  var jumlah = 0, adaLuarLayar = false;
+
+  for (var i = 0; i < fitur.length; i++) {
+    if (jumlah >= MAKS_LABEL_TAMPIL) { adaLuarLayar = true; break; }
+    var teks = nilaiLabel(fitur[i], item.kolomLabel);
+    if (!teks) continue;
+    var c = pusatFitur(fitur[i]);
+    if (!c) continue;
+    if (batas && !batas.contains(L.latLng(c[0], c[1]))) { adaLuarLayar = true; continue; }
+
+    L.marker(c, {
+      interactive: false,
+      keyboard: false,
+      icon: L.divIcon({ className: 'label-bungkus', html: '<span class="label-teks">' + esc(teks) + '</span>', iconSize: [0, 0] })
+    }).addTo(grup);
+    jumlah++;
+  }
+
+  grup.addTo(S.peta);
+  S.lapisLabel[item.id] = grup;
+  if (padat) petaPastikanPemantauZoom();
+  return { digambar: jumlah, adaLagi: adaLuarLayar };
+}
+
+/** Saat peta digeser/di-zoom, gambar ulang label lapisan padat agar mengikuti area tampak. */
+var _pantauZoom = false;
+function petaPastikanPemantauZoom() {
+  if (_pantauZoom || !S.peta) return;
+  _pantauZoom = true;
+  S.peta.on('moveend zoomend', function () {
+    S.overlay.forEach(function (o) {
+      if (o.label && o.tampil && (o.geojson.features || []).length > 60) perbaruiLabelOverlay(o);
+    });
+  });
+}
+
 function pasangUlangOverlay() {
-  S.overlay.forEach(pasangSatuOverlay);
+  S.overlay.forEach(function (o) { pasangSatuOverlay(o); });
 }
 
 function simpanOverlay() {
