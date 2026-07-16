@@ -239,11 +239,14 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
 .inp-mini{flex:1;min-width:0;padding:7px 9px;border:1.5px solid var(--garis);border-radius:9px;background:#fff;
   font-family:inherit;font-size:13px}
 .inp-mini:disabled{opacity:.5}
-.label-bungkus{position:relative;pointer-events:none}
-.label-teks{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;
-  background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.14);border-radius:5px;padding:1px 5px;
-  font-family:var(--dasar);font-size:11px;font-weight:700;color:#14181F;line-height:15px;
-  box-shadow:0 1px 2px rgba(0,0,0,.22)}
+.label-overlay{background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.14);border-radius:5px;
+  padding:1px 6px;font-family:var(--dasar);font-size:11px;font-weight:700;color:#14181F;line-height:15px;
+  box-shadow:0 1px 2px rgba(0,0,0,.22);white-space:nowrap;pointer-events:none}
+.label-overlay.leaflet-tooltip-top::before,
+.label-overlay.leaflet-tooltip-bottom::before,
+.label-overlay.leaflet-tooltip-left::before,
+.label-overlay.leaflet-tooltip-right::before,
+.label-overlay::before{display:none !important;border:none !important}
 .pin-atur-baris{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--garis)}
 .pin-atur-baris .em{font-size:19px;width:26px;text-align:center;flex-shrink:0}
 .pin-atur-baris .nama{flex:1;min-width:0}
@@ -486,7 +489,7 @@ textarea.inp{min-height:72px;resize:vertical}
 
       <button id="btnLogin" class="btn btn-utama btn-lebar">Masuk</button>
       <p id="loginPesan" class="pesan-galat"></p>
-      <p class="jejak">Versi 3.3.2 · Data tersimpan di Google Sheets
+      <p class="jejak">Versi 3.3.3 · Data tersimpan di Google Sheets
         <span id="gantiApi" class="tersembunyi"> · <a href="#" id="lnkGantiApi">ganti server</a></span></p>
       </div>
     </div>
@@ -673,7 +676,7 @@ textarea.inp{min-height:72px;resize:vertical}
       toleransi_akurasi: 10,
       label_tiap: 5
     };
-    window.APP_VERSION = '3.3.2';
+    window.APP_VERSION = '3.3.3';
   </script>
 <script>
 /* ============================================================
@@ -1709,11 +1712,9 @@ function perbaruiLabelOverlay(item) {
     if (!c) continue;
     if (batas && !batas.contains(L.latLng(c[0], c[1]))) { adaLuarLayar = true; continue; }
 
-    L.marker(c, {
-      interactive: false,
-      keyboard: false,
-      icon: L.divIcon({ className: 'label-bungkus', html: '<span class="label-teks">' + esc(teks) + '</span>', iconSize: [0, 0] })
-    }).addTo(grup);
+    L.circleMarker(c, { radius: 0, opacity: 0, fillOpacity: 0, interactive: false })
+      .bindTooltip(String(teks), { permanent: true, direction: 'center', className: 'label-overlay', offset: [0, 0] })
+      .addTo(grup);
     jumlah++;
   }
 
