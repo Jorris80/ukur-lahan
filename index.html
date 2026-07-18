@@ -239,6 +239,17 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
 .inp-mini{flex:1;min-width:0;padding:7px 9px;border:1.5px solid var(--garis);border-radius:9px;background:#fff;
   font-family:inherit;font-size:13px}
 .inp-mini:disabled{opacity:.5}
+.tabel-identify{width:100%;border-collapse:collapse;font-size:13px}
+.tabel-identify th,.tabel-identify td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--garis);
+  vertical-align:top;word-break:break-word}
+.tabel-identify th{color:var(--tinta-3);font-weight:700;font-family:var(--dasar);width:40%;font-size:12px;
+  text-transform:uppercase;letter-spacing:.02em}
+.tabel-identify td{color:var(--tinta);font-weight:600}
+.kosong-nilai{color:var(--tinta-3)}
+.identify-kepala{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;
+  border-bottom:1px solid var(--garis)}
+.identify-kepala b{font-family:var(--dasar);font-size:14px;display:block}
+.identify-kepala small{color:var(--tinta-3);font-size:12px}
 .label-overlay{background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.14);border-radius:5px;
   padding:1px 6px;font-family:var(--dasar);font-size:11px;font-weight:700;color:#14181F;line-height:15px;
   box-shadow:0 1px 2px rgba(0,0,0,.22);white-space:nowrap;pointer-events:none}
@@ -489,7 +500,7 @@ textarea.inp{min-height:72px;resize:vertical}
 
       <button id="btnLogin" class="btn btn-utama btn-lebar">Masuk</button>
       <p id="loginPesan" class="pesan-galat"></p>
-      <p class="jejak">Versi 3.3.3 · Data tersimpan di Google Sheets
+      <p class="jejak">Versi 3.4.0 · Data tersimpan di Google Sheets
         <span id="gantiApi" class="tersembunyi"> · <a href="#" id="lnkGantiApi">ganti server</a></span></p>
       </div>
     </div>
@@ -676,7 +687,7 @@ textarea.inp{min-height:72px;resize:vertical}
       toleransi_akurasi: 10,
       label_tiap: 5
     };
-    window.APP_VERSION = '3.3.3';
+    window.APP_VERSION = '3.4.0';
   </script>
 <script>
 /* ============================================================
@@ -724,6 +735,7 @@ var S = {
   baruUmum: 0,
   baruLahan: 0,
   timerObrolan: null,
+  obrolanGagal: false,
   autoRekam: false,
   autoJarak: 10,
   titikAutoTerakhir: null,
@@ -1230,24 +1242,33 @@ function formLahan(l) {
 
 /* ---------- BUKA LAHAN & PETA ---------- */
 function bukaLahan(id, tetapDiHalaman) {
-  tunggu(true, 'Membuka lahan...');
+  // Kalau ada salinan tersimpan, TAMPILKAN SEKETIKA lalu segarkan di latar. Sebelumnya
+  // setiap buka bidang menunggu jawaban server dulu, jadi terasa ada jeda "Membuka lahan...".
+  var cache = JSON.parse(localStorage.getItem('gu_cache_' + id) || 'null');
+  var tampilkan = function (d, dariCache) {
+    S.aktif = d;
+    siapkanPeta();
+    gambarPeta(false);
+    pindah(tetapDiHalaman ? halamanAktif : 'Peta');
+    if (!tetapDiHalaman) setTimeout(function () { zoomKeBidang(true); }, 140);
+  };
+
+  if (cache) { tampilkan(cache, true); }        // instan
+  else tunggu(true, 'Membuka lahan...');
+
   return api('detailLahan', { lahan_id: id })
     .then(function (d) {
-      S.aktif = d;
       localStorage.setItem('gu_cache_' + id, JSON.stringify(d));
-      siapkanPeta();
-      gambarPeta(false);
-      pindah(tetapDiHalaman ? halamanAktif : 'Peta');
-      // Peta baru punya ukuran nyata setelah halamannya tampil — zoom dilakukan sesudahnya.
-      if (!tetapDiHalaman) setTimeout(function () { zoomKeBidang(true); }, 140);
+      // Kalau data server beda dari cache (atau belum ada cache), perbarui tampilan.
+      var berubah = !cache || JSON.stringify(d) !== JSON.stringify(cache);
+      if (berubah) {
+        var sedangDibuka = S.aktif && S.aktif.lahan && S.aktif.lahan.lahan_id === id;
+        if (sedangDibuka || !cache) { S.aktif = d; gambarPeta(false); perbaruiPapan(); }
+      }
     })
     .catch(function (e) {
-      var cache = JSON.parse(localStorage.getItem('gu_cache_' + id) || 'null');
-      if (cache) {
-        S.aktif = cache; siapkanPeta(); gambarPeta(false); pindah('Peta');
-        setTimeout(function () { zoomKeBidang(true); }, 140);
-        toast('Mode offline: menampilkan data tersimpan.');
-      } else toast(e.message, 'galat');
+      if (!cache) toast(e.message, 'galat');    // tak ada cache & gagal -> baru beri tahu
+      // ada cache -> diam saja, yang tampil sudah benar (mode offline)
     })
     .then(function () { tunggu(false); });
 }
@@ -1325,6 +1346,36 @@ function daftarBasemap() {
   return BASEMAP.concat(S.basemapKustom.map(function (b) {
     return { nama: b.nama, url: b.url, maks: b.maks || 19, kredit: b.nama, jenis: b.jenis || 'xyz', sub: b.sub };
   }));
+}
+
+/* ---------- IDENTIFY: lihat seluruh atribut sebuah fitur vektor ---------- */
+function identifyFitur(item, f) {
+  var prop = (f && f.properties) || {};
+  var kunci = Object.keys(prop);
+
+  var isi = kunci.length
+    ? '<table class="tabel-identify">' + kunci.map(function (k) {
+        var v = prop[k];
+        v = (v === null || v === undefined || v === '') ? '<span class="kosong-nilai">—</span>' : esc(String(v));
+        return '<tr><th>' + esc(k) + '</th><td>' + v + '</td></tr>';
+      }).join('') + '</table>'
+    : '<div class="kosong"><b>Tidak ada atribut</b>Fitur ini tidak memuat data tabel.</div>';
+
+  var jenisGeom = f && f.geometry ? f.geometry.type : '-';
+  var c = pusatFitur(f);
+
+  bukaLembar('Info Fitur — ' + esc(item.nama),
+    '<div class="identify-kepala"><span class="ov-warna" style="background:' + item.warna + '"></span>' +
+    '<div><b>' + esc(item.jenis.toUpperCase()) + '</b><small>' + esc(jenisGeom) + '</small></div></div>' +
+    isi +
+    (c ? '<button class="btn btn-lebar" id="idZoom" style="margin-top:12px">Zoom ke fitur ini</button>' : ''));
+
+  if (c && $('idZoom')) {
+    $('idZoom').onclick = function () {
+      tutupLembar();
+      S.peta.setView(c, Math.max(S.peta.getZoom(), 17));
+    };
+  }
 }
 
 /* ---------- Form tambah peta dasar (XYZ / ArcGIS REST) ---------- */
@@ -1645,8 +1696,10 @@ function pasangSatuOverlay(item) {
       return L.circleMarker(ll, { radius: 5, color: '#fff', weight: 2, fillColor: item.warna, fillOpacity: 1 });
     },
     onEachFeature: function (f, layer) {
-      var teks = nilaiLabel(f, item.kolomLabel);
-      if (teks) layer.bindPopup(teks);   // ketuk untuk lihat nilai — selalu ada
+      layer.on('click', function (e) {
+        if (e.originalEvent) L.DomEvent.stopPropagation(e);
+        identifyFitur(item, f);   // ketuk fitur -> lihat SEMUA atributnya
+      });
     }
   }).addTo(S.peta);
 
@@ -3525,7 +3578,7 @@ function panelObrolan(ruang) {
       });
   }
 
-  tarikPesan(true);
+  tarikPesan(true, true);
   clearInterval(S.timerObrolan);
   S.timerObrolan = setInterval(function () {
     if ($('lembar').classList.contains('tersembunyi')) { clearInterval(S.timerObrolan); return; }
@@ -3533,18 +3586,18 @@ function panelObrolan(ruang) {
   }, JEDA_OBROLAN);
 }
 
-function tarikPesan(gulungKeBawah) {
+function tarikPesan(gulungKeBawah, pertamaKali) {
   var kunci = S.ruangAktif;
   var daftar = S.pesan[kunci] || [];
   var terakhir = daftar.length ? daftar[daftar.length - 1].waktu : '';
 
   return api('ambilPesan', { ruang: namaRuang(kunci), sejak: terakhir })
     .then(function (d) {
+      S.obrolanGagal = false;
       if (d.pesan.length) {
         S.pesan[kunci] = daftar.concat(d.pesan);
         gulungKeBawah = true;
       }
-      // ruang ini sedang dibuka -> anggap sudah terbaca
       var isi = S.pesan[kunci];
       if (isi.length) {
         S.dibaca[namaRuang(kunci)] = isi[isi.length - 1].waktu;
@@ -3554,7 +3607,23 @@ function tarikPesan(gulungKeBawah) {
       perbaruiLencanaPesan();
       gambarPesan(gulungKeBawah);
     })
-    .catch(function () { /* offline: biarkan pesan lama tetap tampil */ });
+    .catch(function (e) {
+      // Dulu error ditelan diam-diam -> panel "Memuat..." menggantung selamanya untuk
+      // pengguna yang koneksinya bermasalah. Sekarang beri tahu & sediakan tombol coba lagi.
+      S.obrolanGagal = true;
+      var w = $('gulungPesan');
+      if (w && (!S.pesan[kunci] || !S.pesan[kunci].length)) {
+        w.innerHTML = '<div class="pesan-kosong">Gagal memuat pesan.<br>' +
+          (navigator.onLine ? 'Server mungkin sibuk atau lambat.' : 'Perangkat sedang offline.') +
+          '<br><button class="btn btn-kecil" id="pesanCoba" style="margin-top:10px">Coba lagi</button></div>';
+        if ($('pesanCoba')) $('pesanCoba').onclick = function () {
+          w.innerHTML = '<div class="pesan-kosong">Memuat...</div>';
+          tarikPesan(true, true);
+        };
+      } else if (pertamaKali) {
+        toast('Sebagian pesan gagal dimuat, mencoba lagi otomatis...', 'galat');
+      }
+    });
 }
 
 function gambarPesan(gulungKeBawah) {
