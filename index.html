@@ -227,6 +227,8 @@ button,input,select,textarea{font-family:inherit;font-size:16px} /* 16px = iOS t
 /* ---------- Obrolan tim ---------- */
 .kepala-obrolan{position:relative;color:#fff;font-size:20px;min-width:40px;min-height:40px;padding:0}
 .pin-alat{display:contents}
+.logo-header{width:34px;height:34px;border-radius:8px;object-fit:contain;background:#fff;flex-shrink:0;margin-right:2px}
+.merek-ikon img{width:100%;height:100%;object-fit:contain;border-radius:10px}
 .ov-baris{border:1px solid var(--garis);border-radius:12px;padding:10px;margin-bottom:10px}
 .ov-atas{display:flex;align-items:center;gap:8px}
 .ov-warna{width:16px;height:16px;border-radius:4px;flex-shrink:0}
@@ -472,7 +474,7 @@ textarea.inp{min-height:72px;resize:vertical}
   <div id="layarLogin" class="login">
     <div class="login-kotak">
       <div class="merek">
-        <div class="merek-ikon">🛰️</div>
+        <div class="merek-ikon" id="merekIkon">🛰️</div>
         <div>
           <h1 id="merekNama">GeoUkur GPS</h1>
           <p id="merekInstansi">Sistem Pengukuran Lahan</p>
@@ -500,7 +502,7 @@ textarea.inp{min-height:72px;resize:vertical}
 
       <button id="btnLogin" class="btn btn-utama btn-lebar">Masuk</button>
       <p id="loginPesan" class="pesan-galat"></p>
-      <p class="jejak">Versi 3.4.0 · Data tersimpan di Google Sheets
+      <p class="jejak">Versi 3.4.1 · Data tersimpan di Google Sheets
         <span id="gantiApi" class="tersembunyi"> · <a href="#" id="lnkGantiApi">ganti server</a></span></p>
       </div>
     </div>
@@ -511,6 +513,7 @@ textarea.inp{min-height:72px;resize:vertical}
 
     <header class="kepala">
       <button id="btnKembali" class="ikon-btn tersembunyi" aria-label="Kembali">‹</button>
+      <img id="logoHeader" class="logo-header tersembunyi" alt="logo">
       <div class="kepala-judul">
         <strong id="judulHalaman">Beranda</strong>
         <small id="subJudul">—</small>
@@ -675,7 +678,7 @@ textarea.inp{min-height:72px;resize:vertical}
        ISI BAGIAN INI SEBELUM MENGUNGGAH KE GITHUB
        GAS_API_URL = URL deployment Web App Apps Script Anda (akhiran /exec).
        ==================================================================== */
-    window.GAS_API_URL = ''; // contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
+    window.GAS_API_URL = 'https://script.google.com/macros/s/AKfycbztO_q1zWPfmM7W84zK66Or6pXt_fEV_lvLEjeVqiTq58VZ2Tx7vWUIe2eaIDJp2R83cQ/exec'; // contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
 
     window.BOOT = {
       app_name: 'GeoUkur GPS',
@@ -687,7 +690,7 @@ textarea.inp{min-height:72px;resize:vertical}
       toleransi_akurasi: 10,
       label_tiap: 5
     };
-    window.APP_VERSION = '3.4.0';
+    window.APP_VERSION = '3.4.1';
   </script>
 <script>
 /* ============================================================
@@ -3005,9 +3008,12 @@ $('inputLogo').onchange = function (e) {
     .then(function (dataUri) { return api('simpanLogo', { data_uri: dataUri }); })
     .then(function () {
       S.config.ada_logo = true;
-      toast('Logo tersimpan. Akan muncul di kop berita acara.', 'sukses');
+      localStorage.setItem('gu_config', JSON.stringify(S.config));
+      terapkanMerek();          // logo langsung muncul di header aplikasi
+      toast('Logo tersimpan. Muncul di header & kop berita acara.', 'sukses');
       if ($('cPratinjau')) return api('ambilLogo', {}).then(function (d) {
-        $('cPratinjau').innerHTML = '<img src="' + esc(d.data) + '" alt="Logo"><span>Logo terpasang</span>';
+        var src = (d && (d.data_uri || d.data)) || '';
+        $('cPratinjau').innerHTML = '<img src="' + esc(src) + '" alt="Logo"><span>Logo terpasang</span>';
       });
     })
     .catch(function (err) { toast(err.message, 'galat'); })
@@ -4258,6 +4264,9 @@ function panelKonfig() {
     api('hapusLogo', {})
       .then(function () {
         S.config.ada_logo = false;
+        S.logoData = '';
+        localStorage.setItem('gu_config', JSON.stringify(S.config));
+        terapkanMerek();
         $('cLogo').value = '';
         $('cPratinjau').innerHTML = '<span>Belum ada logo</span>';
         toast('Logo dihapus.');
@@ -4272,6 +4281,7 @@ function panelKonfig() {
       .then(function (cfg) {
         S.config = cfg;
         localStorage.setItem('gu_config', JSON.stringify(cfg));
+        terapkanMerek();          // judul, instansi, logo, warna langsung diterapkan
         tutupLembar();
         toast('Pengaturan tersimpan.', 'sukses');
       })
@@ -4281,11 +4291,44 @@ function panelKonfig() {
 }
 
 /* ---------- MULAI ---------- */
+/**
+ * Terapkan identitas (judul, instansi, logo, warna) ke seluruh tampilan.
+ * Dipanggil setiap kali config berubah: setelah login, setelah menyimpan Pengaturan,
+ * dan saat boot. Sebelumnya judul & logo tidak pernah ikut diperbarui setelah login,
+ * jadi perubahan terasa "tidak tersimpan".
+ */
+function terapkanMerek() {
+  var c = S.config || {};
+  var nama = c.app_name || 'GeoUkur GPS';
+  var instansi = c.instansi || 'Sistem Pengukuran Lahan';
+
+  document.title = nama;
+  if ($('merekNama')) $('merekNama').textContent = nama;
+  if ($('merekInstansi')) $('merekInstansi').textContent = instansi;
+  document.documentElement.style.setProperty('--oranye', c.warna_utama || '#E8590C');
+
+  // Logo: ambil sekali, pasang di header aplikasi + ikon layar login.
+  if (c.ada_logo && S.token) {
+    api('ambilLogo', {})
+      .then(function (d) {
+        var src = d && d.data_uri;
+        if (!src) return;
+        S.logoData = src;
+        if ($('logoHeader')) { $('logoHeader').src = src; $('logoHeader').classList.remove('tersembunyi'); }
+        if ($('merekIkon')) $('merekIkon').innerHTML = '<img src="' + src + '" alt="logo">';
+      })
+      .catch(function () { /* logo gagal dimuat: biarkan ikon bawaan */ });
+  } else {
+    if ($('logoHeader')) $('logoHeader').classList.add('tersembunyi');
+    if ($('merekIkon')) $('merekIkon').innerHTML = '🛰️';
+  }
+}
+
 function mulaiAplikasi() {
   var cfgTersimpan = JSON.parse(localStorage.getItem('gu_config') || 'null');
   if (cfgTersimpan) S.config = cfgTersimpan;
 
-  document.documentElement.style.setProperty('--oranye', S.config.warna_utama || '#E8590C');
+  terapkanMerek();
   $('layarLogin').classList.add('tersembunyi');
   $('aplikasi').classList.remove('tersembunyi');
   $('btnIkuti').classList.add('nyala');
